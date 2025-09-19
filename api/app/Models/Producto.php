@@ -26,4 +26,10 @@ class Producto extends Model
     {
         return $this->hasMany(CompraDetalle::class, 'producto_id');
     }
+
+    // Accesor: precio con IVA ya calculado
+    public function getPrecioConIvaAttribute()
+    {
+        return $this->precio_unitario * (1 + ($this->iva / 100));
+    }
 }

@@ -17,8 +17,8 @@ return new class extends Migration
             $table->string('nombre'); // Ej: Poste de quebracho, tabla de pino
             $table->string('descripcion')->nullable();
             $table->string('unidad_medida')->default('u'); // Ej: unidad, metro, kg
-            $table->decimal('precio_unitario', 12, 2); // Precio actual
-            $table->decimal('iva', 5, 2); // Ej: 21.00
+            $table->decimal('precio_unitario', 12, 2); // Precio unitario sin IVA
+            $table->decimal('iva', 5, 2)->default(21.00); // Ej: 21.00
             $table->enum('estado', ['activo', 'inactivo'])->default('activo');
             $table->softDeletes(); // SoftDeletes
             $table->timestamps();
