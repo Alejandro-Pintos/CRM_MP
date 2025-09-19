@@ -1,0 +1,29 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class Producto extends Model
+{
+    use SoftDeletes;
+
+    protected $table = 'productos';
+
+    protected $fillable = [
+        'codigo',
+        'nombre',
+        'descripcion',
+        'unidad_medida',
+        'precio_unitario',
+        'iva',
+        'estado',
+    ];
+
+    // Relación con detalles de compras
+    public function detalles()
+    {
+        return $this->hasMany(CompraDetalle::class, 'producto_id');
+    }
+}
