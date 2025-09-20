@@ -8,7 +8,7 @@ class StoreClienteRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Permitir a cualquier usuario autenticado (los permisos ya se manejan con Spatie)
+        // Cualquier usuario autenticado puede usarlo (Spatie maneja permisos)
         return true;
     }
 
@@ -16,10 +16,17 @@ class StoreClienteRequest extends FormRequest
     {
         return [
             'nombre' => 'required|string|max:150',
-            'cuit_dni' => 'nullable|string|max:50|unique:clientes,cuit_dni',
-            'telefono' => 'nullable|string|max:50',
+            'apellido' => 'nullable|string|max:150',
             'email' => 'nullable|email|max:150|unique:clientes,email',
+            'telefono' => 'nullable|string|max:50',
             'direccion' => 'nullable|string|max:255',
+            'ciudad' => 'nullable|string|max:150',
+            'provincia' => 'nullable|string|max:150',
+            'cuit_cuil' => 'nullable|string|max:50|unique:clientes,cuit_cuil',
+            'fecha_registro' => 'nullable|date',
+            'fecha_ultima_compra' => 'nullable|date',
+            'estado' => 'nullable|string|max:50',
+            'saldo_actual' => 'nullable|numeric',
             'limite_credito' => 'nullable|numeric|min:0',
         ];
     }
