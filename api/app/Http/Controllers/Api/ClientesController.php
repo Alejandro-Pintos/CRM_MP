@@ -50,8 +50,11 @@ class ClientesController extends Controller
     }
 
     public function destroy(Cliente $cliente)
-    {
-        $cliente->delete();
-        return response()->json(['message' => 'Cliente eliminado']);
-    }
+{
+    $cliente->delete();
+
+    return response()->json([
+        'message' => 'Cliente eliminado correctamente'
+    ], 200);
+}
 }
