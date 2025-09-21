@@ -23,10 +23,6 @@ class StoreClienteRequest extends FormRequest
             'ciudad' => 'nullable|string|max:150',
             'provincia' => 'nullable|string|max:150',
             'cuit_cuil' => 'nullable|string|max:50|unique:clientes,cuit_cuil',
-            'fecha_registro' => 'nullable|date',
-            'fecha_ultima_compra' => 'nullable|date',
-            'estado' => 'nullable|string|max:50',
-            'saldo_actual' => 'nullable|numeric',
             'limite_credito' => 'nullable|numeric|min:0',
         ];
     }

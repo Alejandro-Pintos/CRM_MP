@@ -12,10 +12,14 @@ class ClienteResource extends JsonResource
         return [
             'id' => $this->id,
             'nombre' => $this->nombre,
-            'cuit_dni' => $this->cuit_dni,
-            'telefono' => $this->telefono,
+            'apellido' => $this->apellido,
             'email' => $this->email,
+            'telefono' => $this->telefono,
             'direccion' => $this->direccion,
+            'ciudad' => $this->ciudad,
+            'provincia' => $this->provincia,
+            'cuit_cuil' => $this->cuit_cuil, // ✅ corregido
+            'estado' => $this->estado,
             'saldo_actual' => $this->saldo_actual,
             'limite_credito' => $this->limite_credito,
             'created_at' => $this->created_at?->toDateTimeString(),
