@@ -13,9 +13,12 @@ class UpdateProductoRequest extends FormRequest
 
     public function rules(): array
     {
+        $productoId = $this->route('producto')->id ?? null;
+
         return [
+            'codigo' => 'required|string|max:50|unique:productos,codigo,' . $productoId,
             'nombre' => 'required|string|max:150',
-            'descripcion' => 'nullable|string',
+            'descripcion' => 'nullable|string|max:255',
             'unidad_medida' => 'required|string|max:50',
             'precio_unitario' => 'required|numeric|min:0',
             'iva' => 'required|numeric|min:0|max:100',

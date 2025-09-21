@@ -5,20 +5,30 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class ClienteResource extends JsonResource
+class ProductoResource extends JsonResource
 {
+    /**
+     * Transform the resource into an array.
+     *
+     * @return array<string, mixed>
+     */
     public function toArray(Request $request): array
     {
         return [
             'id' => $this->id,
+            'codigo' => $this->codigo,
             'nombre' => $this->nombre,
-            'cuit_dni' => $this->cuit_dni,
-            'telefono' => $this->telefono,
-            'email' => $this->email,
-            'direccion' => $this->direccion,
-            'saldo_actual' => $this->saldo_actual,
-            'limite_credito' => $this->limite_credito,
+            'descripcion' => $this->descripcion,
+            'unidad_medida' => $this->unidad_medida,
+            'precio_unitario' => (float) $this->precio_unitario,
+            'iva' => (float) $this->iva,
+            'precio_con_iva' => (float) $this->precio_con_iva, // accesor en el modelo
+            'estado' => $this->estado,
+
+            // timestamps
             'created_at' => $this->created_at?->toDateTimeString(),
+            'updated_at' => $this->updated_at?->toDateTimeString(),
+            'deleted_at' => $this->deleted_at?->toDateTimeString(),
         ];
     }
 }

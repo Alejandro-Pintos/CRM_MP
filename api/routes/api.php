@@ -11,7 +11,7 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
     Route::post('refresh', [AuthController::class, 'refresh']);
     Route::post('me', [AuthController::class, 'me']);
 });
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::get('/ping', function () {
     return response()->json([
         'status' => 'ok',
