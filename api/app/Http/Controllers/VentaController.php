@@ -14,9 +14,6 @@ class VentaController extends Controller
         $this->middleware(['auth:api']);
         $this->middleware('permission:ventas.index')->only(['index','show']);
         $this->middleware('permission:ventas.store')->only(['store']);
-        // Dejar previstos si luego agregamos endpoints:
-        // $this->middleware('permission:ventas.update')->only(['update']);
-        // $this->middleware('permission:ventas.destroy')->only(['destroy']);
     }
 
     public function index(Request $request)
@@ -38,9 +35,7 @@ class VentaController extends Controller
 
     public function store(VentaStoreRequest $request, VentaService $service)
     {
-        // ID del usuario autenticado (JWT guard: api)
         $usuarioId = (int) $request->user()->id;
-
         $venta = $service->crearVenta($request->validated(), $usuarioId);
 
         return (new VentaResource($venta))

@@ -22,19 +22,29 @@ class ClientesController extends Controller
     public function index(Request $request)
     {
         $q = $request->get('q');
-        $clientes = Cliente::when($q, fn($query) =>
-            $query->where('nombre','like',"%$q%")
-                  ->orWhere('email','like',"%$q%")
-        )->paginate(10);
 
-        return ClienteResource::collection($clientes);
+        $query = Cliente::query();
+        if ($q) {
+            $query->where(function ($qq) use ($q) {
+                $qq->where('nombre', 'like', "%{$q}%")
+                   ->orWhere('email',  'like', "%{$q}%");
+            });
+        }
+
+        return ClienteResource::collection(
+            $query->orderBy('nombre')->paginate(10)
+        );
     }
 
     public function store(StoreClienteRequest $request)
     {
         $cliente = Cliente::create($request->validated());
+
         return (new ClienteResource($cliente))
-            ->additional(['message' => 'Cliente creado']);
+            ->additional(['message' => 'Cliente creado'])
+            ->response()
+            ->setStatusCode(201)                                   // <- 201 Created
+            ->header('Location', route('clientes.show', $cliente)); // <- opcional REST
     }
 
     public function show(Cliente $cliente)
@@ -45,16 +55,14 @@ class ClientesController extends Controller
     public function update(UpdateClienteRequest $request, Cliente $cliente)
     {
         $cliente->update($request->validated());
+
         return (new ClienteResource($cliente))
             ->additional(['message' => 'Cliente actualizado']);
     }
 
     public function destroy(Cliente $cliente)
-{
-    $cliente->delete();
-
-    return response()->json([
-        'message' => 'Cliente eliminado correctamente'
-    ], 200);
-}
+    {
+        $cliente->delete();
+        return response()->noContent(); // <- 204 No Content
+    }
 }

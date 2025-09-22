@@ -1,8 +1,9 @@
 <?php
-
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use App\Models\Producto;
 
 class UpdateProductoRequest extends FormRequest
 {
@@ -13,16 +14,24 @@ class UpdateProductoRequest extends FormRequest
 
     public function rules(): array
     {
-        $productoId = $this->route('producto')->id ?? null;
+        $routeModel = $this->route('producto'); // model binding
+        $id = $routeModel instanceof Producto ? $routeModel->id : $routeModel;
 
         return [
-            'codigo' => 'required|string|max:50|unique:productos,codigo,' . $productoId,
-            'nombre' => 'required|string|max:150',
-            'descripcion' => 'nullable|string|max:255',
-            'unidad_medida' => 'required|string|max:50',
-            'precio_unitario' => 'required|numeric|min:0',
-            'iva' => 'required|numeric|min:0|max:100',
-            'estado' => 'in:activo,inactivo',
+            'codigo'          => ['sometimes', 'required', 'string', 'max:50', Rule::unique('productos', 'codigo')->ignore($id)],
+            'nombre'          => ['sometimes', 'required', 'string', 'max:150'],
+            'descripcion'     => ['sometimes', 'nullable', 'string', 'max:255'],
+            'unidad_medida'   => ['sometimes', 'required', 'string', 'max:50'],
+            'precio_unitario' => ['sometimes', 'required', 'numeric', 'min:0'],
+            'iva'             => ['sometimes', 'required', 'numeric', 'min:0', 'max:100'],
+            'estado'          => ['sometimes',  'required', 'in:activo,inactivo'],
+        ];
+    }
+    public function messages(): array
+    {
+        return [
+            'codigo.unique' => 'El código ya está en uso por otro producto.',
+            'estado.in'     => 'El estado debe ser "activo" o "inactivo".',
         ];
     }
 }

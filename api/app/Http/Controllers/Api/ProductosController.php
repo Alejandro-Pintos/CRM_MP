@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -25,24 +24,35 @@ class ProductosController extends Controller
      */
     public function index(Request $request)
     {
-        $q = $request->get('q');
-        $productos = Producto::when($q, fn($query) =>
-            $query->where('nombre', 'like', "%$q%")
-                  ->orWhere('descripcion', 'like', "%$q%")
-        )->paginate(10);
+        $q = $request->string('q');
 
-        return ProductoResource::collection($productos);
+        $query = Producto::query();
+
+        if ($q->isNotEmpty()) {
+            $query->where(function ($qq) use ($q) {
+                $qq->where('nombre', 'like', "%{$q}%")
+                   ->orWhere('descripcion', 'like', "%{$q}%")
+                   ->orWhere('codigo', 'like', "%{$q}%");
+            });
+        }
+
+        return ProductoResource::collection(
+            $query->orderBy('nombre')->paginate(10)
+        );
     }
 
     /**
      * Crear un nuevo producto.
+     * Devuelve 201 Created + Location header al recurso creado.
      */
     public function store(StoreProductoRequest $request)
     {
         $producto = Producto::create($request->validated());
 
         return (new ProductoResource($producto))
-            ->additional(['message' => 'Producto creado']);
+            ->response()
+            ->setStatusCode(201)
+            ->header('Location', route('productos.show', $producto));
     }
 
     /**
@@ -60,17 +70,16 @@ class ProductosController extends Controller
     {
         $producto->update($request->validated());
 
-        return (new ProductoResource($producto))
-            ->additional(['message' => 'Producto actualizado']);
+        return new ProductoResource($producto); // 200 OK por defecto
     }
 
     /**
-     * Eliminar un producto.
+     * Eliminar un producto (soft delete).
+     * Devuelve 204 No Content.
      */
     public function destroy(Producto $producto)
     {
         $producto->delete();
-
-        return response()->json(['message' => 'Producto eliminado']);
+        return response()->noContent(); // 204
     }
 }

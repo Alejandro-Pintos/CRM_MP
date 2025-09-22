@@ -22,9 +22,13 @@ class RolesAndPermissionsSeeder extends Seeder
         $roles = ['roles.index','roles.store','roles.update','roles.destroy'];
         $permisos = ['permisos.index','permisos.store','permisos.update','permisos.destroy'];
         $ventas = ['ventas.index', 'ventas.store', 'ventas.show'];
+        $pagos = ['pagos.index','pagos.store'];
+        $metodosPago = ['metodos_pago.index'];
+        $ctaCte = ['cta_cte.show'];
+
 
         // 3) Crear (si no existen) todos los permisos con guard 'api'
-        $TodosLosPermisos = array_merge($clientes, $productos, $proveedores, $usuarios, $roles, $permisos, $ventas);
+        $TodosLosPermisos = array_merge($clientes, $productos, $proveedores, $usuarios, $roles, $permisos, $ventas, $pagos, $metodosPago, $ctaCte);
         foreach ($TodosLosPermisos as $permiso) {
             Permission::firstOrCreate(['name' => $permiso, 'guard_name' => 'api']);
         }

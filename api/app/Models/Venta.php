@@ -34,4 +34,8 @@ class Venta extends Model
     {
         return $this->belongsTo(Usuario::class, 'usuario_id');
     }
+    public function pagos()
+    {
+        return $this->hasMany(Pago::class, 'venta_id');
+    }
 }
