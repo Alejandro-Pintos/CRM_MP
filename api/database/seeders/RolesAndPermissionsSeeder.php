@@ -11,44 +11,32 @@ class RolesAndPermissionsSeeder extends Seeder
 {
     public function run(): void
     {
-        // Limpiar caché de permisos
+        // 1) Limpiar caché de permisos (obligatorio al agregar o cambiar permisos)
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // ==== Permisos de Clientes ====
-        $clientes = [
-            'clientes.index',
-            'clientes.store',
-            'clientes.update',
-            'clientes.destroy',
-        ];
+        // 2) Definir permisos por módulo
+        $clientes = ['clientes.index','clientes.store','clientes.update','clientes.destroy'];
+        $productos = ['productos.index','productos.store','productos.update','productos.destroy'];
+        $proveedores = ['proveedores.index','proveedores.store','proveedores.update','proveedores.destroy'];
+        $usuarios = ['usuarios.index','usuarios.store','usuarios.update','usuarios.destroy'];
+        $roles = ['roles.index','roles.store','roles.update','roles.destroy'];
+        $permisos = ['permisos.index','permisos.store','permisos.update','permisos.destroy'];
+        $ventas = ['ventas.index', 'ventas.store', 'ventas.show'];
 
-        // ==== Permisos de Productos ====
-        $productos = [
-            'productos.index',
-            'productos.store',
-            'productos.update',
-            'productos.destroy',
-        ];
-
-        $permisos = array_merge($clientes, $productos);
-
-        foreach ($permisos as $permiso) {
-            Permission::firstOrCreate(
-                ['name' => $permiso, 'guard_name' => 'api']
-            );
+        // 3) Crear (si no existen) todos los permisos con guard 'api'
+        $TodosLosPermisos = array_merge($clientes, $productos, $proveedores, $usuarios, $roles, $permisos, $ventas);
+        foreach ($TodosLosPermisos as $permiso) {
+            Permission::firstOrCreate(['name' => $permiso, 'guard_name' => 'api']);
         }
 
-        // ==== Rol Admin ====
-        $adminRole = Role::firstOrCreate(
-            ['name' => 'admin', 'guard_name' => 'api']
-        );
+        // 4) Crear rol admin (guard 'api') y asignarle TODOS los permisos del guard
+        $adminRole = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'api']);
+        $adminRole->syncPermissions($TodosLosPermisos);
 
-        $adminRole->syncPermissions($permisos);
-
-        // ==== Asignar rol admin al primer usuario ====
-        $adminUser = Usuario::first();
-        if ($adminUser) {
-            $adminUser->assignRole($adminRole);
+        // 5) Asignar rol admin a un usuario (el primero o el que quieras)
+        $adminUser = Usuario::first(); // o: Usuario::where('email','admin@example.com')->first();
+        if ($adminUser && !$adminUser->hasRole('admin')) {
+            $adminUser->assignRole('admin');
         }
     }
 }
