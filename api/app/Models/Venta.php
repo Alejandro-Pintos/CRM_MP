@@ -27,7 +27,7 @@ class Venta extends Model
 
     public function cliente()
     {
-        return $this->belongsTo(Cliente::class, 'cliente_id'); // asumiendo App\Models\Cliente existe
+        return $this->belongsTo(Cliente::class, 'cliente_id');
     }
 
     public function usuario()

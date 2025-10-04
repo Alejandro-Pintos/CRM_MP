@@ -33,15 +33,32 @@ class VentaController extends Controller
         return VentaResource::collection($query->paginate(15));
     }
 
-    public function store(VentaStoreRequest $request, VentaService $service)
-    {
-        $usuarioId = (int) $request->user()->id;
-        $venta = $service->crearVenta($request->validated(), $usuarioId);
+public function store(VentaStoreRequest $request, VentaService $service)
+{
+    $usuarioId = (int) optional($request->user())->id;
 
-        return (new VentaResource($venta))
-            ->response()
-            ->setStatusCode(201);
+    // 1) Crear la venta con el servicio
+    $venta = $service->crearVenta($request->validated(), $usuarioId);
+
+    // 2) Asegurarnos de tener una instancia de App\Models\Venta
+    if (is_array($venta)) {
+        // por si el service devuelve ['venta' => $venta, 'items' => [...]] o similar
+        $venta = $venta['venta'] ?? $venta[0] ?? null;
     }
+    if (! $venta instanceof \App\Models\Venta) {
+        abort(500, 'VentaService debe devolver una instancia de App\\Models\\Venta.');
+    }
+
+    // 3) Cargar relaciones para que el Resource tenga todo listo (evita N+1)
+    $venta->loadMissing(['items', 'cliente', 'pagos']);
+
+    // 4) Devolver 201 + Location con el Resource
+    return (new \App\Http\Resources\VentaResource($venta))
+        ->response()
+        ->setStatusCode(201)
+        ->header('Location', route('ventas.show', ['venta' => $venta->id]));
+}
+
 
     public function show(Venta $venta)
     {

@@ -25,6 +25,7 @@ class UpdateProductoRequest extends FormRequest
             'precio_unitario' => ['sometimes', 'required', 'numeric', 'min:0'],
             'iva'             => ['sometimes', 'required', 'numeric', 'min:0', 'max:100'],
             'estado'          => ['sometimes',  'required', 'in:activo,inactivo'],
+            'proveedor_id' => ['nullable','integer','exists:proveedores,id'],
         ];
     }
     public function messages(): array

@@ -19,6 +19,7 @@ class Producto extends Model
         'precio_unitario',
         'iva',
         'estado',
+        'proveedor_id',
     ];
 
     // Relación con detalles de compras
