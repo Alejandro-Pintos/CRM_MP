@@ -32,6 +32,9 @@ dist-ssr
 *.sw?
 .yarn
 
+# Build output
+admin.zip
+
 # iconify dist files
 src/plugins/iconify/icons.css
 
