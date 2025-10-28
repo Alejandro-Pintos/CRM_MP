@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { login as apiLogin } from '@/services/auth'
+import { login as apiLogin } from '@/services/api'
 
 const router = useRouter()
 const form = ref({ email: '', password: '' })
