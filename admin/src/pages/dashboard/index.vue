@@ -2,8 +2,7 @@
 <template>
   <v-container class="pa-6">
     <div class="d-flex align-center justify-space-between">
-      <h2>Dashboard</h2>
-      <v-btn @click="logout">Salir</v-btn>
+      <h2>Panel</h2>
     </div>
     <v-divider class="my-4" />
     <p>Bienvenido al CRM-MP Admin.</p>

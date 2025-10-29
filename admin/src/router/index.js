@@ -27,8 +27,11 @@ const router = createRouter({
         path: '/',
         name: 'root',
         redirect: to => {
-          const userData = localStorage.getItem("usuario");
-          if (userData) {
+          // ✅ Cambiar "usuario" por "accessToken" o "userData"
+          const accessToken = localStorage.getItem("accessToken");
+          const userData = localStorage.getItem("userData");
+          
+          if (accessToken && userData) {
             // Buscar la primera página que no sea login
             const dashboardPage = pages.find(page => 
               page.name === 'dashboard' || 

@@ -11,14 +11,15 @@ export const useApi = createFetch({
   options: {
     refetch: true,
     async beforeFetch({ options }) {
-      const accessToken = useCookie('accessToken').value
+      // ✅ CAMBIAR: usar localStorage en lugar de useCookie
+      const accessToken = localStorage.getItem('accessToken')
       if (accessToken) {
         options.headers = {
           ...options.headers,
           Authorization: `Bearer ${accessToken}`,
         }
       }
-      
+
       return { options }
     },
     afterFetch(ctx) {
@@ -32,7 +33,7 @@ export const useApi = createFetch({
       catch (error) {
         console.error(error)
       }
-      
+
       return { data: parsedData, response }
     },
   },

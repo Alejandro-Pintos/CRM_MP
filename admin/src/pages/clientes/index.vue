@@ -16,7 +16,7 @@ const fetchClientes = async () => {
       ''
 
     const res = await fetch(`${API}/api/v1/clientes`, {
-      //headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: token ? { Authorization: `Bearer ${token}` } : {}, // ✅ DESCOMENTAR ESTA LÍNEA
     })
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`)

@@ -21,37 +21,9 @@ function isTokenExpired(token) {
   return decodedToken.exp < currentTime;
 }
 
-/* function isUserInactive() {
-  const lastActivity = localStorage.getItem('lastActivity');
-  const sessionStartTime = localStorage.getItem('sessionStartTime');
-  
-  if (!lastActivity || !sessionStartTime) {
-    return true;
-  }
-  
-  const now = Date.now();
-  const lastActivityTime = parseInt(lastActivity);
-  const maxInactiveTime = 25 * 60 * 1000; // 25 minutos en milisegundos
-  
-  return (now - lastActivityTime) > maxInactiveTime;
-} */
-
 function updateLastActivity() {
   localStorage.setItem('lastActivity', Date.now().toString());
 }
-
-/* function checkInactivityAndLogout() {
-  if (isUserInactive()) {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("sessionStartTime");
-    localStorage.removeItem("lastActivity");
-    
-    if (window.location.pathname !== '/login') {
-      window.location.href = '/login';
-    }
-  }
-} */
 
 export const setupGuards = router => {
   // Configurar detección de actividad del usuario
@@ -60,28 +32,27 @@ export const setupGuards = router => {
     document.addEventListener(event, updateLastActivity, { passive: true });
   });
 
-  // Verificar inactividad cada 30 segundos
-  //setInterval(checkInactivityAndLogout, 30000);
-
   // Función para actualizar datos del usuario desde API
   const refreshUserData = async (token) => {
     try {
-      const apiUrl = import.meta.env.VITE_API_BASE_URL;
-      const response = await fetch(`${apiUrl}/auth/me`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+      const response = await fetch(`${apiUrl}/api/v1/me`, {  // ✅ Cambiar a /api/v1/me
+        method: 'POST',  // ✅ Cambiar a POST
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json'
         }
       });
-      
+
       if (response.ok) {
         const userData = await response.json();
-        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('userData', JSON.stringify(userData));  // ✅ Cambiar a userData
         return userData;
       } else {
         return null;
       }
     } catch (error) {
+      console.error('Error al refrescar datos del usuario:', error);
       return null;
     }
   };
@@ -92,9 +63,9 @@ export const setupGuards = router => {
       'forgot-password',
       'login'
     ];
-    const token = localStorage.getItem("token");
-    const userData = localStorage.getItem("user");
-    let user = userData ? JSON.parse(userData) : null;
+    const token = localStorage.getItem("accessToken");  // ✅ Cambiar a accessToken
+    const userDataString = localStorage.getItem("userData");  // ✅ Cambiar a userData
+    let user = userDataString ? JSON.parse(userDataString) : null;
 
     // Si el usuario existe pero no tiene roles/permisos, actualizar desde API
     if (user && token && (!user.roles || !user.permissions)) {
@@ -103,23 +74,26 @@ export const setupGuards = router => {
         user = updatedUser;
       } else {
         // Si no se puede actualizar, hacer logout
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        localStorage.removeItem('accessToken');  // ✅ Cambiar a accessToken
+        localStorage.removeItem('userData');  // ✅ Cambiar a userData
         return next({ name: 'login' });
       }
     }
 
-    // Si el token está expirado o el usuario está inactivo, limpiar localStorage
-    // (Descomenta si quieres usar la expiración/inactividad)
-    // if (token && (isTokenExpired(token) || isUserInactive())) {
-    //   localStorage.removeItem("token");
-    //   localStorage.removeItem("user");
-    //   localStorage.removeItem("sessionStartTime");
-    //   localStorage.removeItem("lastActivity");
-    // }
+    // Verificar si el token está expirado
+    if (token && isTokenExpired(token)) {
+      localStorage.removeItem("accessToken");  // ✅ Cambiar a accessToken
+      localStorage.removeItem("userData");  // ✅ Cambiar a userData
+      localStorage.removeItem("sessionStartTime");
+      localStorage.removeItem("lastActivity");
+      
+      if (!publicPages.includes(to.name)) {
+        return next({ name: 'login' });
+      }
+    }
 
     // Si no está autenticado y la ruta no es pública, redirige a login
-    if (!user && !publicPages.includes(to.name)) {
+    if (!token && !publicPages.includes(to.name)) {
       if (to.name !== 'login') {
         return next({ name: 'login' });
       } else {
@@ -128,7 +102,7 @@ export const setupGuards = router => {
     }
 
     // Permitir acceso total al Super-Admin
-    const isSuperAdmin = user && user.roles && user.roles.some(r => 
+    const isSuperAdmin = user && user.roles && user.roles.some(r =>
       r.name === 'superadmin' || r.name === 'Super-Admin' || r.name === 'super-admin'
     );
     if (isSuperAdmin) {
@@ -139,7 +113,7 @@ export const setupGuards = router => {
     if (to.meta && to.meta.requiresRole) {
       const hasRole = user && user.roles && user.roles.some(r => r.name === to.meta.requiresRole);
       if (!hasRole) {
-        return next({ name: 'root' }); // si tu home es 'root'
+        return next({ name: 'root' });
       }
     }
 
@@ -152,7 +126,7 @@ export const setupGuards = router => {
     }
 
     // Si está autenticado y va a login, redirige al home
-    if (user && to.name === 'login') {
+    if (token && to.name === 'login') {
       return next({ name: 'root' });
     }
 
