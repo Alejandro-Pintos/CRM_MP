@@ -291,6 +291,27 @@ class ReporteController extends Controller
         );
     }
 
+    public function exportProveedoresCsv(Request $request)
+    {
+        $request->validate([
+            'from'               => ['nullable','date'],
+            'to'                 => ['nullable','date','after_or_equal:from'],
+            'include_unassigned' => ['nullable','boolean'],
+        ]);
+
+        $from  = $request->input('from');
+        $to    = $request->input('to');
+        $includeUnassigned = $request->boolean('include_unassigned', true);
+
+        $filename = 'reporte_proveedores_'.($from ?? 'inicio').'_a_'.($to ?? 'hoy').'.csv';
+
+        return Excel::download(
+            new ProveedoresRankingExport($from, $to, $includeUnassigned),
+            $filename,
+            \Maatwebsite\Excel\Excel::CSV
+        );
+    }
+
     // Ventas → CSV
     public function exportVentasCsv(Request $request)
     {
@@ -332,6 +353,27 @@ class ReporteController extends Controller
         );
     }
 
+    public function exportClientesCsv(Request $request)
+    {
+        $request->validate([
+            'from'  => ['nullable','date'],
+            'to'    => ['nullable','date','after_or_equal:from'],
+            'limit' => ['nullable','integer','min:1','max:100'],
+        ]);
+
+        $from  = $request->input('from');
+        $to    = $request->input('to');
+        $limit = (int) $request->input('limit', 10);
+
+        $filename = 'reporte_clientes_'.($from ?? 'inicio').'_a_'.($to ?? 'hoy').'.csv';
+
+        return Excel::download(
+            new ClientesRankingExport($from, $to, $limit),
+            $filename,
+            \Maatwebsite\Excel\Excel::CSV
+        );
+    }
+
     // Productos (Top) → XLSX
     public function exportProductosXlsx(Request $request)
     {
@@ -350,6 +392,27 @@ class ReporteController extends Controller
         return Excel::download(
             new ProductosRankingExport($from, $to, $limit),
             $filename
+        );
+    }
+
+    public function exportProductosCsv(Request $request)
+    {
+        $request->validate([
+            'from'  => ['nullable','date'],
+            'to'    => ['nullable','date','after_or_equal:from'],
+            'limit' => ['nullable','integer','min:1','max:100'],
+        ]);
+
+        $from  = $request->input('from');
+        $to    = $request->input('to');
+        $limit = (int) $request->input('limit', 10);
+
+        $filename = 'reporte_productos_'.($from ?? 'inicio').'_a_'.($to ?? 'hoy').'.csv';
+
+        return Excel::download(
+            new ProductosRankingExport($from, $to, $limit),
+            $filename,
+            \Maatwebsite\Excel\Excel::CSV
         );
     }
 

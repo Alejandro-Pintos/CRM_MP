@@ -23,7 +23,7 @@ class VentaController extends Controller
         $desde    = $request->date('desde');
         $hasta    = $request->date('hasta');
 
-        $query = Venta::with('items')->orderByDesc('fecha');
+        $query = Venta::with(['items', 'cliente'])->orderByDesc('fecha');
 
         if ($qCliente) $query->where('cliente_id', $qCliente);
         if ($estado && $estado->isNotEmpty()) $query->where('estado_pago', $estado);

@@ -23,11 +23,22 @@ class VentaResource extends JsonResource
         return [
             'id'              => $this->id,
             'cliente_id'      => $this->cliente_id,
+            'cliente'         => $this->whenLoaded('cliente', function () {
+                return [
+                    'id'       => $this->cliente->id,
+                    'nombre'   => $this->cliente->nombre,
+                    'apellido' => $this->cliente->apellido,
+                    'email'    => $this->cliente->email,
+                ];
+            }),
+            'usuario_id'      => $this->usuario_id,
             'fecha'           => $this->fecha,
             'total'           => $total,
             'total_pagado'    => round($totalPagado, 2),
             'saldo_pendiente' => $saldoPendiente,
             'estado_pago'     => $this->estado_pago,
+            'tipo_comprobante' => $this->tipo_comprobante,
+            'numero_comprobante' => $this->numero_comprobante,
             'items' => $this->whenLoaded('items', function () {
                 return $this->items->map(function ($it) {
                     return [
