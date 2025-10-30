@@ -4,6 +4,7 @@ namespace App\Services;
 use App\Models\Venta;
 use App\Models\DetalleVenta;
 use App\Models\Cliente;
+use App\Models\Pedido;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -52,6 +53,16 @@ class VentaService
             $venta->numero_comprobante = $payload['numero_comprobante'] ?? null;
             $venta->total = $total;
             $venta->save();
+
+            // 4.1) Si viene de un pedido, asociarlo y actualizar estado
+            if (!empty($payload['pedido_id'])) {
+                $pedido = Pedido::find($payload['pedido_id']);
+                if ($pedido) {
+                    $pedido->venta_id = $venta->id;
+                    $pedido->estado = 'entregado';
+                    $pedido->save();
+                }
+            }
 
             // 5) Crear ítems (detalle_venta)
             foreach ($payload['items'] as $it) {

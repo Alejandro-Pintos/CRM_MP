@@ -22,6 +22,7 @@ class ProveedorController extends Controller
     {
         $q = $request->string('q');
         $estado = $request->string('estado');
+        $perPage = $request->input('per_page', 15);
 
         $query = Proveedor::query();
         if ($q->isNotEmpty()) {
@@ -34,7 +35,12 @@ class ProveedorController extends Controller
             $query->where('estado', $estado);
         }
 
-        return ProveedorResource::collection($query->orderBy('nombre')->paginate(15));
+        // Si per_page es 'all', devolver todos sin paginación
+        if ($perPage === 'all') {
+            return ProveedorResource::collection($query->orderBy('nombre')->get());
+        }
+
+        return ProveedorResource::collection($query->orderBy('nombre')->paginate($perPage));
     }
 
     public function store(ProveedorStoreRequest $request)

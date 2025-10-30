@@ -4,7 +4,7 @@ import { apiFetch } from './api'
 const BASE_PATH = '/api/v1/proveedores'
 
 export async function getProveedores() {
-  return await apiFetch(BASE_PATH, { method: 'GET' })
+  return await apiFetch(`${BASE_PATH}?per_page=all`, { method: 'GET' })
 }
 
 export async function getProveedor(id) {

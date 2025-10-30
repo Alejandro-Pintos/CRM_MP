@@ -25,6 +25,7 @@ class ProductosController extends Controller
     public function index(Request $request)
     {
         $q = $request->string('q');
+        $perPage = $request->input('per_page', 10);
 
         $query = Producto::query();
 
@@ -36,8 +37,15 @@ class ProductosController extends Controller
             });
         }
 
+        // Si per_page es 'all', devolver todos sin paginación
+        if ($perPage === 'all') {
+            return ProductoResource::collection(
+                $query->orderBy('nombre')->get()
+            );
+        }
+
         return ProductoResource::collection(
-            $query->orderBy('nombre')->paginate(10)
+            $query->orderBy('nombre')->paginate($perPage)
         );
     }
 

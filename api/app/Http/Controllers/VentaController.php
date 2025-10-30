@@ -22,6 +22,7 @@ class VentaController extends Controller
         $estado   = $request->string('estado_pago');
         $desde    = $request->date('desde');
         $hasta    = $request->date('hasta');
+        $perPage  = $request->input('per_page', 15);
 
         $query = Venta::with(['items', 'cliente'])->orderByDesc('fecha');
 
@@ -30,7 +31,12 @@ class VentaController extends Controller
         if ($desde) $query->whereDate('fecha', '>=', $desde);
         if ($hasta) $query->whereDate('fecha', '<=', $hasta);
 
-        return VentaResource::collection($query->paginate(15));
+        // Si per_page es 'all', devolver todos sin paginación
+        if ($perPage === 'all') {
+            return VentaResource::collection($query->get());
+        }
+
+        return VentaResource::collection($query->paginate($perPage));
     }
 
 public function store(VentaStoreRequest $request, VentaService $service)

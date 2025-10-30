@@ -20,10 +20,11 @@ class ProductoResource extends JsonResource
             'nombre' => $this->nombre,
             'descripcion' => $this->descripcion,
             'unidad_medida' => $this->unidad_medida,
-            'precio_unitario' => (float) $this->precio_unitario,
+            'precio' => (float) $this->precio,
             'iva' => (float) $this->iva,
             'precio_con_iva' => (float) $this->precio_con_iva, // accesor en el modelo
             'estado' => $this->estado,
+            'proveedor_id' => $this->proveedor_id,
 
             // timestamps
             'created_at' => $this->created_at?->toDateTimeString(),

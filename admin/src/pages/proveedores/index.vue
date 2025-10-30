@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getProveedores, createProveedor, updateProveedor, deleteProveedor } from '@/services/proveedores'
+import { toast } from '@/plugins/toast'
 
 const proveedores = ref([])
 const loading = ref(false)
@@ -44,7 +45,9 @@ const fetchProveedores = async () => {
     const data = await getProveedores()
     proveedores.value = Array.isArray(data) ? data : (data.data ?? [])
   } catch (e) {
-    error.value = e.message || 'Error al cargar proveedores'
+    const errorMsg = e.message || 'Error al cargar proveedores'
+    error.value = errorMsg
+    toast.error(errorMsg)
   } finally {
     loading.value = false
   }
@@ -66,14 +69,18 @@ const deleteItemConfirm = async () => {
   try {
     await deleteProveedor(editedItem.value.id)
     proveedores.value.splice(editedIndex.value, 1)
+    toast.success('Proveedor eliminado correctamente')
     closeDelete()
   } catch (e) {
-    error.value = e.message || 'Error al eliminar proveedor'
+    const errorMsg = e.message || 'Error al eliminar proveedor'
+    error.value = errorMsg
+    toast.error(errorMsg)
   }
 }
 
 const close = () => {
   dialog.value = false
+  error.value = ''
   setTimeout(() => {
     editedItem.value = Object.assign({}, defaultItem)
     editedIndex.value = -1
@@ -82,6 +89,7 @@ const close = () => {
 
 const closeDelete = () => {
   dialogDelete.value = false
+  error.value = ''
   setTimeout(() => {
     editedItem.value = Object.assign({}, defaultItem)
     editedIndex.value = -1
@@ -93,13 +101,17 @@ const save = async () => {
     if (editedIndex.value > -1) {
       const updated = await updateProveedor(editedItem.value.id, editedItem.value)
       Object.assign(proveedores.value[editedIndex.value], updated)
+      toast.success('Proveedor actualizado correctamente')
     } else {
-      const created = await createProveedor(editedItem.value)
-      proveedores.value.push(created)
+      await createProveedor(editedItem.value)
+      toast.success('Proveedor creado correctamente')
+      await fetchProveedores() // Refrescar lista
     }
     close()
   } catch (e) {
-    error.value = e.message || 'Error al guardar proveedor'
+    const errorMsg = e.message || 'Error al guardar proveedor'
+    error.value = errorMsg
+    toast.error(errorMsg)
   }
 }
 
@@ -146,7 +158,7 @@ onMounted(fetchProveedores)
                 @click="editItem(item)"
                 title="Editar proveedor"
               >
-                <VIcon>mdi-pencil</VIcon>
+                <VIcon>ri-pencil-line</VIcon>
               </VBtn>
               <VBtn
                 icon
@@ -156,7 +168,7 @@ onMounted(fetchProveedores)
                 @click="deleteItem(item)"
                 title="Eliminar proveedor"
               >
-                <VIcon>mdi-delete</VIcon>
+                <VIcon>ri-delete-bin-6-line</VIcon>
               </VBtn>
             </div>
           </template>

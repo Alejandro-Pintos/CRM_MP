@@ -218,7 +218,7 @@ class ReporteController extends Controller
                     SUM(d.cantidad)                      as cantidad_total,
                     SUM(d.cantidad * d.precio_unitario)  as ingreso_total
                 ")
-                ->groupBy('proveedor_id','nombre')
+                ->groupBy('proveedor_id', 'pr.nombre')
                 ->orderByRaw("CASE WHEN proveedor_id = 0 THEN 1 ELSE 0 END, ingreso_total DESC")
                 ->limit($limit)
                 ->get();

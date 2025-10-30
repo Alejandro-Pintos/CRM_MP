@@ -45,4 +45,10 @@ class Cliente extends Model
     {
         return $this->hasMany(Compra::class, 'cliente_id');
     }
+
+    // Relación con Pedidos
+    public function pedidos()
+    {
+        return $this->hasMany(Pedido::class, 'cliente_id');
+    }
 }

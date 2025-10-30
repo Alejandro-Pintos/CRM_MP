@@ -9,6 +9,7 @@ use App\Http\Controllers\MetodoPagoController;
 use App\Http\Controllers\CuentaCorrienteController;
 use App\Http\Controllers\Api\ReporteController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Api\PedidoController;
 
 Route::prefix('v1')->middleware('auth:api')->group(function () {
 
@@ -20,6 +21,13 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
 
     Route::apiResource('proveedores', ProveedorController::class)
         ->parameters(['proveedores' => 'proveedor']);   // <-- explícito
+    
+    // Pedidos
+    Route::apiResource('pedidos', PedidoController::class)
+        ->parameters(['pedidos' => 'pedido']);
+    Route::get('pedidos-pendientes', [PedidoController::class, 'pendientes'])->name('pedidos.pendientes');
+    Route::post('pedidos/{pedido}/asociar-venta', [PedidoController::class, 'asociarVenta'])->name('pedidos.asociar_venta');
+    Route::get('clima', [PedidoController::class, 'getClima'])->name('clima.get');
     
         Route::apiResource('ventas', VentaController::class)
         ->parameters(['ventas' => 'venta'])

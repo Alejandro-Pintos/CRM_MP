@@ -16,7 +16,7 @@ class Producto extends Model
         'nombre',
         'descripcion',
         'unidad_medida',
-        'precio_unitario',
+        'precio',
         'iva',
         'estado',
         'proveedor_id',
@@ -31,6 +31,6 @@ class Producto extends Model
     // Accesor: precio con IVA ya calculado
     public function getPrecioConIvaAttribute()
     {
-        return $this->precio_unitario * (1 + ($this->iva / 100));
+        return $this->precio * (1 + ($this->iva / 100));
     }
 }

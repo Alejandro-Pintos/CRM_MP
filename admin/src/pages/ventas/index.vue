@@ -1,40 +1,17 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { getVentas, createVenta, updateVenta, deleteVenta, getPagosVenta, createPagoVenta } from '@/services/ventas'
-import { getClientes } from '@/services/clientes'
-import { getProductos } from '@/services/productos'
+import { ref, onMounted } from 'vue'
+import { getVentas, deleteVenta, getPagosVenta, createPagoVenta } from '@/services/ventas'
 import { getMetodosPago } from '@/services/metodosPago'
+import { toast } from '@/plugins/toast'
 
 const ventas = ref([])
-const clientes = ref([])
-const productos = ref([])
 const metodosPago = ref([])
 const loading = ref(false)
 const error = ref('')
-const dialog = ref(false)
 const dialogDelete = ref(false)
 const dialogPagos = ref(false)
-const editedIndex = ref(-1)
 const selectedVenta = ref(null)
 const pagosVenta = ref([])
-
-const editedItem = ref({
-  id: null,
-  cliente_id: null,
-  fecha: new Date().toISOString().split('T')[0],
-  tipo_comprobante: '',
-  numero_comprobante: '',
-  productos: [],
-})
-
-const defaultItem = {
-  id: null,
-  cliente_id: null,
-  fecha: new Date().toISOString().split('T')[0],
-  tipo_comprobante: '',
-  numero_comprobante: '',
-  productos: [],
-}
 
 const nuevoPago = ref({
   metodo_pago_id: null,
@@ -52,12 +29,6 @@ const headers = [
   { title: 'Acciones', key: 'actions', sortable: false },
 ]
 
-const totalCalculado = computed(() => {
-  return editedItem.value.productos.reduce((sum, p) => {
-    return sum + (p.precio_unitario * p.cantidad)
-  }, 0)
-})
-
 const fetchVentas = async () => {
   loading.value = true
   error.value = ''
@@ -73,27 +44,11 @@ const fetchVentas = async () => {
       ventas.value = []
     }
   } catch (e) {
-    error.value = e.message || 'Error al cargar ventas'
+    const errorMsg = e.message || 'Error al cargar ventas'
+    error.value = errorMsg
+    toast.error(errorMsg)
   } finally {
     loading.value = false
-  }
-}
-
-const fetchClientes = async () => {
-  try {
-    const data = await getClientes()
-    clientes.value = Array.isArray(data) ? data : (data.data ?? [])
-  } catch (e) {
-    console.error('Error al cargar clientes:', e)
-  }
-}
-
-const fetchProductos = async () => {
-  try {
-    const data = await getProductos()
-    productos.value = Array.isArray(data) ? data : (data.data ?? [])
-  } catch (e) {
-    console.error('Error al cargar productos:', e)
   }
 }
 
@@ -102,34 +57,26 @@ const fetchMetodosPago = async () => {
     const data = await getMetodosPago()
     metodosPago.value = Array.isArray(data) ? data : (data.data ?? [])
   } catch (e) {
+    toast.error('Error al cargar métodos de pago')
     console.error('Error al cargar métodos de pago:', e)
   }
 }
 
-const editItem = (item) => {
-  console.log('Editando venta:', item)
-  editedIndex.value = ventas.value.indexOf(item)
-  editedItem.value = Object.assign({}, {
-    ...item,
-    productos: item.items || []
-  })
-  dialog.value = true
-}
-
 const deleteItem = (item) => {
-  console.log('Eliminando venta:', item)
-  editedIndex.value = ventas.value.indexOf(item)
-  editedItem.value = Object.assign({}, item)
+  selectedVenta.value = item
   dialogDelete.value = true
 }
 
 const deleteItemConfirm = async () => {
   try {
-    await deleteVenta(editedItem.value.id)
-    ventas.value.splice(editedIndex.value, 1)
+    await deleteVenta(selectedVenta.value.id)
+    await fetchVentas()
+    toast.success('Venta eliminada correctamente')
     closeDelete()
   } catch (e) {
-    error.value = e.message || 'Error al eliminar venta'
+    const errorMsg = e.message || 'Error al eliminar venta'
+    error.value = errorMsg
+    toast.error(errorMsg)
   }
 }
 
@@ -141,7 +88,9 @@ const verPagos = async (item) => {
     pagosVenta.value = Array.isArray(data) ? data : (data.data ?? [])
     dialogPagos.value = true
   } catch (e) {
-    error.value = e.message || 'Error al cargar pagos'
+    const errorMsg = e.message || 'Error al cargar pagos'
+    error.value = errorMsg
+    toast.error(errorMsg)
   }
 }
 
@@ -155,72 +104,30 @@ const registrarPago = async () => {
       monto: 0,
       fecha_pago: new Date().toISOString().split('T')[0],
     }
+    toast.success('Pago registrado correctamente')
     await fetchVentas()
   } catch (e) {
-    error.value = e.message || 'Error al registrar pago'
+    const errorMsg = e.message || 'Error al registrar pago'
+    error.value = errorMsg
+    toast.error(errorMsg)
   }
-}
-
-const close = () => {
-  dialog.value = false
-  error.value = '' // Limpiar error al cerrar
-  setTimeout(() => {
-    editedItem.value = Object.assign({}, defaultItem)
-    editedIndex.value = -1
-  }, 300)
 }
 
 const closeDelete = () => {
   dialogDelete.value = false
-  setTimeout(() => {
-    editedItem.value = Object.assign({}, defaultItem)
-    editedIndex.value = -1
-  }, 300)
+  error.value = ''
+  selectedVenta.value = null
 }
 
-const save = async () => {
-  try {
-    editedItem.value.total = totalCalculado.value
-    
-    // Preparar datos para enviar al backend
-    const dataToSend = {
-      ...editedItem.value,
-      items: editedItem.value.productos // Cambiar 'productos' a 'items'
-    }
-    delete dataToSend.productos // Eliminar el campo productos
-    
-    if (editedIndex.value > -1) {
-      const updated = await updateVenta(editedItem.value.id, dataToSend)
-      Object.assign(ventas.value[editedIndex.value], updated)
-    } else {
-      const created = await createVenta(dataToSend)
-      ventas.value.push(created)
-    }
-    close()
-  } catch (e) {
-    console.error('Error al guardar venta:', e)
-    // Mejorar mensaje de error
-    if (e.message.includes('límite de crédito')) {
-      error.value = 'El cliente ha superado su límite de crédito. Por favor, verifique el saldo o ajuste el límite.'
-    } else if (e.errors?.limite_credito) {
-      error.value = e.errors.limite_credito[0] || 'Error de límite de crédito'
-    } else {
-      error.value = e.message || 'Error al guardar venta'
-    }
+const closePagos = () => {
+  dialogPagos.value = false
+  selectedVenta.value = null
+  pagosVenta.value = []
+  nuevoPago.value = {
+    metodo_pago_id: null,
+    monto: 0,
+    fecha_pago: new Date().toISOString().split('T')[0],
   }
-}
-
-const agregarProducto = () => {
-  editedItem.value.productos.push({
-    producto_id: null,
-    cantidad: 1,
-    precio_unitario: 0,
-    iva: 21.00,
-  })
-}
-
-const eliminarProducto = (index) => {
-  editedItem.value.productos.splice(index, 1)
 }
 
 const formatPrice = (value) => {
@@ -242,8 +149,6 @@ const getEstadoColor = (estado) => {
 
 onMounted(async () => {
   await fetchVentas()
-  await fetchClientes()
-  await fetchProductos()
   await fetchMetodosPago()
 })
 </script>
@@ -253,8 +158,9 @@ onMounted(async () => {
     <VCard>
       <VCardTitle>
         <div class="d-flex justify-space-between align-center">
-          <span class="text-h5">Ventas</span>
-          <VBtn color="primary" @click="dialog = true">
+          <span class="text-h5">Historial de Ventas</span>
+          <VBtn color="primary" :to="'/ventas/nueva'">
+            <VIcon left>ri-add-line</VIcon>
             Nueva Venta
           </VBtn>
         </div>
@@ -289,22 +195,12 @@ onMounted(async () => {
               <VBtn
                 icon
                 size="small"
-                color="success"
+                color="info"
                 variant="tonal"
                 @click="verPagos(item)"
-                title="Ver pagos"
+                title="Ver y gestionar pagos"
               >
-                <VIcon>mdi-cash-multiple</VIcon>
-              </VBtn>
-              <VBtn
-                icon
-                size="small"
-                color="primary"
-                variant="tonal"
-                @click="editItem(item)"
-                title="Editar venta"
-              >
-                <VIcon>mdi-pencil</VIcon>
+                <VIcon>ri-money-dollar-circle-line</VIcon>
               </VBtn>
               <VBtn
                 icon
@@ -314,7 +210,7 @@ onMounted(async () => {
                 @click="deleteItem(item)"
                 title="Eliminar venta"
               >
-                <VIcon>mdi-delete</VIcon>
+                <VIcon>ri-delete-bin-6-line</VIcon>
               </VBtn>
             </div>
           </template>
@@ -322,140 +218,16 @@ onMounted(async () => {
       </VCardText>
     </VCard>
 
-    <!-- Dialog para crear/editar venta -->
-    <VDialog v-model="dialog" max-width="800px">
-      <VCard>
-        <VCardTitle>
-          <span class="text-h5">{{ editedIndex === -1 ? 'Nueva' : 'Editar' }} Venta</span>
-        </VCardTitle>
-
-        <VCardText>
-          <VAlert v-if="error" type="error" class="mb-4" closable @click:close="error = ''">
-            {{ error }}
-          </VAlert>
-          
-          <VContainer>
-            <VRow>
-              <VCol cols="12" md="6">
-                <VSelect
-                  v-model="editedItem.cliente_id"
-                  :items="clientes"
-                  item-title="nombre"
-                  item-value="id"
-                  label="Cliente*"
-                  required
-                />
-              </VCol>
-              <VCol cols="12" md="3">
-                <VTextField
-                  v-model="editedItem.fecha"
-                  label="Fecha*"
-                  type="date"
-                  required
-                />
-              </VCol>
-              <VCol cols="12" md="3">
-                <VSelect
-                  v-model="editedItem.estado_pago"
-                  :items="['pendiente', 'parcial', 'pagado', 'cancelado']"
-                  label="Estado Pago*"
-                  required
-                />
-              </VCol>
-              <VCol cols="12" md="4">
-                <VSelect
-                  v-model="editedItem.tipo_comprobante"
-                  :items="['Factura A', 'Factura B', 'Factura C', 'Recibo', 'Presupuesto']"
-                  label="Tipo Comprobante"
-                  clearable
-                />
-              </VCol>
-              <VCol cols="12" md="4">
-                <VTextField
-                  v-model="editedItem.numero_comprobante"
-                  label="Nro. Comprobante"
-                />
-              </VCol>
-            </VRow>
-
-            <VDivider class="my-4" />
-            
-            <div class="d-flex justify-space-between align-center mb-4">
-              <h3>Productos</h3>
-              <VBtn size="small" color="primary" @click="agregarProducto">
-                Agregar Producto
-              </VBtn>
-            </div>
-
-            <VRow v-for="(prod, index) in editedItem.productos" :key="index" class="mb-2">
-              <VCol cols="12" md="5">
-                <VSelect
-                  v-model="prod.producto_id"
-                  :items="productos"
-                  item-title="nombre"
-                  item-value="id"
-                  label="Producto"
-                  @update:model-value="prod.precio_unitario = productos.find(p => p.id === prod.producto_id)?.precio_unitario || 0; prod.iva = productos.find(p => p.id === prod.producto_id)?.iva || 21.00"
-                />
-              </VCol>
-              <VCol cols="12" md="2">
-                <VTextField
-                  v-model.number="prod.cantidad"
-                  label="Cantidad"
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                />
-              </VCol>
-              <VCol cols="12" md="2">
-                <VTextField
-                  v-model.number="prod.precio_unitario"
-                  label="Precio Unit."
-                  type="number"
-                  step="0.01"
-                />
-              </VCol>
-              <VCol cols="12" md="2">
-                <VTextField
-                  v-model.number="prod.iva"
-                  label="IVA %"
-                  type="number"
-                  step="0.01"
-                />
-              </VCol>
-              <VCol cols="12" md="1">
-                <VBtn icon size="small" color="error" @click="eliminarProducto(index)">
-                  <VIcon>mdi-delete</VIcon>
-                </VBtn>
-              </VCol>
-            </VRow>
-
-            <VDivider class="my-4" />
-            
-            <div class="text-h6 text-right">
-              Total: {{ formatPrice(totalCalculado) }}
-            </div>
-          </VContainer>
-        </VCardText>
-
-        <VCardActions>
-          <VSpacer />
-          <VBtn color="secondary" variant="text" @click="close">
-            Cancelar
-          </VBtn>
-          <VBtn color="primary" variant="text" @click="save">
-            Guardar
-          </VBtn>
-        </VCardActions>
-      </VCard>
-    </VDialog>
-
     <!-- Dialog para confirmar eliminación -->
     <VDialog v-model="dialogDelete" max-width="500px">
       <VCard>
         <VCardTitle class="text-h5">
           ¿Está seguro de eliminar esta venta?
         </VCardTitle>
+        <VCardText>
+          <p>Venta #{{ selectedVenta?.id }} - Cliente: {{ selectedVenta?.cliente_nombre }}</p>
+          <p><strong>Total: {{ formatPrice(selectedVenta?.total || 0) }}</strong></p>
+        </VCardText>
         <VCardActions>
           <VSpacer />
           <VBtn color="secondary" variant="text" @click="closeDelete">
@@ -496,13 +268,13 @@ onMounted(async () => {
             </VCol>
             <VCol cols="12" md="3">
               <VTextField
-                v-model="nuevoPago.fecha"
-                label="Fecha"
+                v-model="nuevoPago.fecha_pago"
+                label="Fecha de Pago"
                 type="date"
               />
             </VCol>
             <VCol cols="12" md="2">
-              <VBtn color="primary" @click="registrarPago">
+              <VBtn color="primary" @click="registrarPago" block>
                 Registrar
               </VBtn>
             </VCol>
@@ -516,23 +288,31 @@ onMounted(async () => {
               <tr>
                 <th>Fecha</th>
                 <th>Método</th>
-                <th>Monto</th>
+                <th class="text-end">Monto</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="pago in pagosVenta" :key="pago.id">
                 <td>{{ pago.fecha }}</td>
                 <td>{{ pago.metodo_pago?.nombre || 'N/A' }}</td>
-                <td>{{ formatPrice(pago.monto) }}</td>
+                <td class="text-end">{{ formatPrice(pago.monto) }}</td>
+              </tr>
+              <tr class="font-weight-bold">
+                <td colspan="2" class="text-end">Total Pagado:</td>
+                <td class="text-end text-primary">
+                  {{ formatPrice(pagosVenta.reduce((sum, p) => sum + parseFloat(p.monto), 0)) }}
+                </td>
               </tr>
             </tbody>
           </VTable>
-          <p v-else class="text-center text-disabled">No hay pagos registrados</p>
+          <VAlert v-else type="info" variant="tonal">
+            No hay pagos registrados para esta venta
+          </VAlert>
         </VCardText>
 
         <VCardActions>
           <VSpacer />
-          <VBtn color="secondary" variant="text" @click="dialogPagos = false">
+          <VBtn color="secondary" variant="text" @click="closePagos">
             Cerrar
           </VBtn>
         </VCardActions>

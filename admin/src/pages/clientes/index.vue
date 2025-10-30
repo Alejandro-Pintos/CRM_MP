@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getClientes, createCliente, updateCliente, deleteCliente, getCuentaCorriente } from '@/services/clientes'
+import { toast } from '@/plugins/toast'
 
 const clientes = ref([])
 const loading = ref(false)
@@ -72,7 +73,9 @@ const fetchClientes = async () => {
       clientes.value = []
     }
   } catch (e) {
-    error.value = e.message || 'Error al cargar clientes'
+    const errorMsg = e.message || 'Error al cargar clientes'
+    error.value = errorMsg
+    toast.error(errorMsg)
   } finally {
     loading.value = false
   }
@@ -94,9 +97,12 @@ const deleteItemConfirm = async () => {
   try {
     await deleteCliente(editedItem.value.id)
     clientes.value.splice(editedIndex.value, 1)
+    toast.success('Cliente eliminado correctamente')
     closeDelete()
   } catch (e) {
-    error.value = e.message || 'Error al eliminar cliente'
+    const errorMsg = e.message || 'Error al eliminar cliente'
+    error.value = errorMsg
+    toast.error(errorMsg)
   }
 }
 
@@ -107,12 +113,15 @@ const verCuentaCorriente = async (item) => {
     cuentaCorriente.value = Array.isArray(data) ? data : (data.data ?? [])
     dialogCuentaCorriente.value = true
   } catch (e) {
-    error.value = e.message || 'Error al cargar cuenta corriente'
+    const errorMsg = e.message || 'Error al cargar cuenta corriente'
+    error.value = errorMsg
+    toast.error(errorMsg)
   }
 }
 
 const close = () => {
   dialog.value = false
+  error.value = ''
   setTimeout(() => {
     editedItem.value = Object.assign({}, defaultItem)
     editedIndex.value = -1
@@ -121,6 +130,7 @@ const close = () => {
 
 const closeDelete = () => {
   dialogDelete.value = false
+  error.value = ''
   setTimeout(() => {
     editedItem.value = Object.assign({}, defaultItem)
     editedIndex.value = -1
@@ -132,13 +142,17 @@ const save = async () => {
     if (editedIndex.value > -1) {
       const updated = await updateCliente(editedItem.value.id, editedItem.value)
       Object.assign(clientes.value[editedIndex.value], updated)
+      toast.success('Cliente actualizado correctamente')
     } else {
-      const created = await createCliente(editedItem.value)
-      clientes.value.push(created)
+      await createCliente(editedItem.value)
+      toast.success('Cliente creado correctamente')
+      await fetchClientes() // Refrescar lista
     }
     close()
   } catch (e) {
-    error.value = e.message || 'Error al guardar cliente'
+    const errorMsg = e.message || 'Error al guardar cliente'
+    error.value = errorMsg
+    toast.error(errorMsg)
   }
 }
 
@@ -206,7 +220,7 @@ onMounted(fetchClientes)
                 @click="verCuentaCorriente(item)"
                 title="Ver cuenta corriente"
               >
-                <VIcon>mdi-file-document</VIcon>
+                <VIcon>ri-eye-line</VIcon>
               </VBtn>
               <VBtn
                 icon
@@ -216,7 +230,7 @@ onMounted(fetchClientes)
                 @click="editItem(item)"
                 title="Editar cliente"
               >
-                <VIcon>mdi-pencil</VIcon>
+                <VIcon>ri-pencil-line</VIcon>
               </VBtn>
               <VBtn
                 icon
@@ -226,7 +240,7 @@ onMounted(fetchClientes)
                 @click="deleteItem(item)"
                 title="Eliminar cliente"
               >
-                <VIcon>mdi-delete</VIcon>
+                <VIcon>ri-delete-bin-6-line</VIcon>
               </VBtn>
             </div>
           </template>

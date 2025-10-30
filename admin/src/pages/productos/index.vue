@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { getProductos, createProducto, updateProducto, deleteProducto } from '@/services/productos'
 import { getProveedores } from '@/services/proveedores'
+import { toast } from '@/plugins/toast'
 
 const productos = ref([])
 const proveedores = ref([])
@@ -16,7 +17,7 @@ const editedItem = ref({
   nombre: '',
   descripcion: '',
   unidad_medida: 'u',
-  precio_unitario: 0,
+  precio: 0,
   iva: 21.00,
   estado: 'activo',
   proveedor_id: null,
@@ -27,7 +28,7 @@ const defaultItem = {
   nombre: '',
   descripcion: '',
   unidad_medida: 'u',
-  precio_unitario: 0,
+  precio: 0,
   iva: 21.00,
   estado: 'activo',
   proveedor_id: null,
@@ -38,7 +39,7 @@ const headers = [
   { title: 'Código', key: 'codigo' },
   { title: 'Nombre', key: 'nombre' },
   { title: 'Unidad', key: 'unidad_medida' },
-  { title: 'Precio', key: 'precio_unitario' },
+  { title: 'Precio', key: 'precio' },
   { title: 'IVA %', key: 'iva' },
   { title: 'Estado', key: 'estado' },
   { title: 'Acciones', key: 'actions', sortable: false },
@@ -51,7 +52,9 @@ const fetchProductos = async () => {
     const data = await getProductos()
     productos.value = Array.isArray(data) ? data : (data.data ?? [])
   } catch (e) {
-    error.value = e.message || 'Error al cargar productos'
+    const errorMsg = e.message || 'Error al cargar productos'
+    error.value = errorMsg
+    toast.error(errorMsg)
   } finally {
     loading.value = false
   }
@@ -82,14 +85,18 @@ const deleteItemConfirm = async () => {
   try {
     await deleteProducto(editedItem.value.id)
     productos.value.splice(editedIndex.value, 1)
+    toast.success('Producto eliminado correctamente')
     closeDelete()
   } catch (e) {
-    error.value = e.message || 'Error al eliminar producto'
+    const errorMsg = e.message || 'Error al eliminar producto'
+    error.value = errorMsg
+    toast.error(errorMsg)
   }
 }
 
 const close = () => {
   dialog.value = false
+  error.value = ''
   setTimeout(() => {
     editedItem.value = Object.assign({}, defaultItem)
     editedIndex.value = -1
@@ -98,6 +105,7 @@ const close = () => {
 
 const closeDelete = () => {
   dialogDelete.value = false
+  error.value = ''
   setTimeout(() => {
     editedItem.value = Object.assign({}, defaultItem)
     editedIndex.value = -1
@@ -109,13 +117,17 @@ const save = async () => {
     if (editedIndex.value > -1) {
       const updated = await updateProducto(editedItem.value.id, editedItem.value)
       Object.assign(productos.value[editedIndex.value], updated)
+      toast.success('Producto actualizado correctamente')
     } else {
-      const created = await createProducto(editedItem.value)
-      productos.value.push(created)
+      await createProducto(editedItem.value)
+      toast.success('Producto creado correctamente')
+      await fetchProductos() // Refrescar lista para obtener el nuevo producto
     }
     close()
   } catch (e) {
-    error.value = e.message || 'Error al guardar producto'
+    const errorMsg = e.message || 'Error al guardar producto'
+    error.value = errorMsg
+    toast.error(errorMsg)
   }
 }
 
@@ -157,8 +169,8 @@ onMounted(async () => {
           no-data-text="No hay productos registrados"
           class="elevation-1"
         >
-          <template #item.precio_unitario="{ item }">
-            {{ formatPrice(item.precio_unitario) }}
+          <template #item.precio="{ item }">
+            {{ formatPrice(item.precio) }}
           </template>
           <template #item.estado="{ item }">
             <VChip :color="item.estado === 'activo' ? 'success' : 'error'" size="small">
@@ -175,7 +187,7 @@ onMounted(async () => {
                 @click="editItem(item)"
                 title="Editar producto"
               >
-                <VIcon>mdi-pencil</VIcon>
+                <VIcon>ri-pencil-line</VIcon>
               </VBtn>
               <VBtn
                 icon
@@ -185,7 +197,7 @@ onMounted(async () => {
                 @click="deleteItem(item)"
                 title="Eliminar producto"
               >
-                <VIcon>mdi-delete</VIcon>
+                <VIcon>ri-delete-bin-6-line</VIcon>
               </VBtn>
             </div>
           </template>
@@ -235,7 +247,7 @@ onMounted(async () => {
               </VCol>
               <VCol cols="12" md="4">
                 <VTextField
-                  v-model.number="editedItem.precio_unitario"
+                  v-model.number="editedItem.precio"
                   label="Precio Unitario*"
                   type="number"
                   step="0.01"

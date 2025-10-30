@@ -24,10 +24,12 @@ declare module 'vue-router/auto-routes' {
     'dashboard': RouteRecordInfo<'dashboard', '/dashboard', Record<never, never>, Record<never, never>>,
     'forgot-password': RouteRecordInfo<'forgot-password', '/forgot-password', Record<never, never>, Record<never, never>>,
     'login': RouteRecordInfo<'login', '/login', Record<never, never>, Record<never, never>>,
+    'pedidos': RouteRecordInfo<'pedidos', '/pedidos', Record<never, never>, Record<never, never>>,
     'productos': RouteRecordInfo<'productos', '/productos', Record<never, never>, Record<never, never>>,
     'proveedores': RouteRecordInfo<'proveedores', '/proveedores', Record<never, never>, Record<never, never>>,
     'reportes': RouteRecordInfo<'reportes', '/reportes', Record<never, never>, Record<never, never>>,
     'second-page': RouteRecordInfo<'second-page', '/second-page', Record<never, never>, Record<never, never>>,
     'ventas': RouteRecordInfo<'ventas', '/ventas', Record<never, never>, Record<never, never>>,
+    'ventas-nueva': RouteRecordInfo<'ventas-nueva', '/ventas/nueva', Record<never, never>, Record<never, never>>,
   }
 }

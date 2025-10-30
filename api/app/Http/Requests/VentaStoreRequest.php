@@ -15,6 +15,7 @@ class VentaStoreRequest extends FormRequest
             'fecha' => ['nullable','date'],
             'tipo_comprobante' => ['nullable','string','max:50'],
             'numero_comprobante' => ['nullable','string','max:50'],
+            'pedido_id' => ['nullable','integer','exists:pedidos,id'],
 
             'items' => ['required','array','min:1'],
             'items.*.producto_id' => ['required','integer','exists:productos,id'],

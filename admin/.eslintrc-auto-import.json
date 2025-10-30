@@ -358,6 +358,16 @@
     "useId": true,
     "useModel": true,
     "useTemplateRef": true,
-    "useAuth": true
+    "useAuth": true,
+    "adjustColorBrightness": true,
+    "hexToRgb": true,
+    "isColorDark": true,
+    "rgbToHex": true,
+    "useDashboardTheme": true,
+    "DashboardTheme": true,
+    "advancedThemePlugin": true,
+    "designTokens": true,
+    "useAdvancedTheme": true,
+    "useErrorHandler": true
   }
 }

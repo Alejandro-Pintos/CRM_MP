@@ -25,35 +25,31 @@ const reporteProveedores = ref([])
 const reporteVentas = ref([])
 
 const headersClientes = [
-  { title: 'ID', key: 'id' },
+  { title: 'ID Cliente', key: 'cliente_id' },
   { title: 'Nombre', key: 'nombre' },
-  { title: 'Email', key: 'email' },
-  { title: 'Teléfono', key: 'telefono' },
-  { title: 'Dirección', key: 'direccion' },
+  { title: 'Total Compras', key: 'compras' },
+  { title: 'Ingreso Total', key: 'ingreso_total' },
 ]
 
 const headersProductos = [
-  { title: 'ID', key: 'id' },
+  { title: 'ID Producto', key: 'producto_id' },
   { title: 'Nombre', key: 'nombre' },
-  { title: 'Categoría', key: 'categoria' },
-  { title: 'Precio', key: 'precio' },
-  { title: 'Stock', key: 'stock' },
+  { title: 'Cantidad Vendida', key: 'cantidad_total' },
+  { title: 'Ingreso Total', key: 'ingreso_total' },
 ]
 
 const headersProveedores = [
-  { title: 'ID', key: 'id' },
+  { title: 'ID Proveedor', key: 'proveedor_id' },
   { title: 'Nombre', key: 'nombre' },
-  { title: 'Email', key: 'email' },
-  { title: 'Teléfono', key: 'telefono' },
-  { title: 'CUIT', key: 'cuit' },
+  { title: 'Cantidad Total', key: 'cantidad_total' },
+  { title: 'Ingreso Total', key: 'ingreso_total' },
+  { title: 'Participación %', key: 'participacion' },
 ]
 
 const headersVentas = [
-  { title: 'ID', key: 'id' },
-  { title: 'Cliente', key: 'cliente.nombre' },
-  { title: 'Fecha', key: 'fecha' },
-  { title: 'Total', key: 'total' },
-  { title: 'Estado', key: 'estado' },
+  { title: 'Período', key: 'period' },
+  { title: 'Total Ventas', key: 'ventas_count' },
+  { title: 'Total Neto', key: 'total_neto' },
 ]
 
 const fetchReportes = async () => {
@@ -70,7 +66,8 @@ const fetchReportes = async () => {
     reporteClientes.value = Array.isArray(clientes) ? clientes : (clientes.data ?? [])
     reporteProductos.value = Array.isArray(productos) ? productos : (productos.data ?? [])
     reporteProveedores.value = Array.isArray(proveedores) ? proveedores : (proveedores.data ?? [])
-    reporteVentas.value = Array.isArray(ventas) ? ventas : (ventas.data ?? [])
+    // Ventas devuelve un objeto con series
+    reporteVentas.value = ventas.series ?? (Array.isArray(ventas) ? ventas : (ventas.data ?? []))
   } catch (e) {
     error.value = e.message || 'Error al cargar reportes'
   } finally {
@@ -176,7 +173,11 @@ onMounted(fetchReportes)
               no-data-text="No hay datos disponibles"
               class="elevation-1"
               density="comfortable"
-            />
+            >
+              <template #item.ingreso_total="{ item }">
+                {{ formatPrice(item.ingreso_total) }}
+              </template>
+            </VDataTable>
           </VWindowItem>
 
           <!-- Reporte de Productos -->
@@ -201,13 +202,8 @@ onMounted(fetchReportes)
               class="elevation-1"
               density="comfortable"
             >
-              <template #item.precio="{ item }">
-                {{ formatPrice(item.precio) }}
-              </template>
-              <template #item.stock="{ item }">
-                <VChip :color="item.stock > 10 ? 'success' : item.stock > 0 ? 'warning' : 'error'" size="small">
-                  {{ item.stock }}
-                </VChip>
+              <template #item.ingreso_total="{ item }">
+                {{ formatPrice(item.ingreso_total) }}
               </template>
             </VDataTable>
           </VWindowItem>
@@ -233,7 +229,16 @@ onMounted(fetchReportes)
               no-data-text="No hay datos disponibles"
               class="elevation-1"
               density="comfortable"
-            />
+            >
+              <template #item.ingreso_total="{ item }">
+                {{ formatPrice(item.ingreso_total) }}
+              </template>
+              <template #item.participacion="{ item }">
+                <VChip color="primary" size="small">
+                  {{ item.participacion }}%
+                </VChip>
+              </template>
+            </VDataTable>
           </VWindowItem>
 
           <!-- Reporte de Ventas -->
@@ -258,13 +263,8 @@ onMounted(fetchReportes)
               class="elevation-1"
               density="comfortable"
             >
-              <template #item.total="{ item }">
-                {{ formatPrice(item.total) }}
-              </template>
-              <template #item.estado="{ item }">
-                <VChip :color="getEstadoColor(item.estado)" size="small">
-                  {{ item.estado }}
-                </VChip>
+              <template #item.total_neto="{ item }">
+                {{ formatPrice(item.total_neto) }}
               </template>
             </VDataTable>
           </VWindowItem>

@@ -22,6 +22,7 @@ class ClientesController extends Controller
     public function index(Request $request)
     {
         $q = $request->get('q');
+        $perPage = $request->input('per_page', 10);
 
         $query = Cliente::query();
         if ($q) {
@@ -31,8 +32,15 @@ class ClientesController extends Controller
             });
         }
 
+        // Si per_page es 'all', devolver todos sin paginación
+        if ($perPage === 'all') {
+            return ClienteResource::collection(
+                $query->orderBy('nombre')->get()
+            );
+        }
+
         return ClienteResource::collection(
-            $query->orderBy('nombre')->paginate(10)
+            $query->orderBy('nombre')->paginate($perPage)
         );
     }
 
