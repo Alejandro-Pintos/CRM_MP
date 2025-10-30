@@ -110,10 +110,26 @@ const statCards = computed(() => [
 ])
 
 const formatPrice = (value) => {
+  // Formatear números grandes con K (miles) y M (millones)
+  if (value >= 1000000) {
+    return `$ ${(value / 1000000).toFixed(1)}M`
+  } else if (value >= 1000) {
+    return `$ ${(value / 1000).toFixed(1)}K`
+  }
   return new Intl.NumberFormat('es-AR', {
     style: 'currency',
     currency: 'ARS'
   }).format(value)
+}
+
+const formatStats = (value) => {
+  // Para números normales de estadísticas (clientes, productos, etc)
+  if (value >= 1000000) {
+    return `${(value / 1000000).toFixed(1)}M`
+  } else if (value >= 1000) {
+    return `${(value / 1000).toFixed(1)}K`
+  }
+  return value.toLocaleString('es-AR')
 }
 
 const fetchStats = async () => {
@@ -417,7 +433,7 @@ onMounted(fetchStats)
                 {{ 
                   ['ingresos', 'ticketPromedio'].includes(card.key) 
                     ? formatPrice(stats.totales[card.key]) 
-                    : stats.totales[card.key].toLocaleString('es-AR')
+                    : formatStats(stats.totales[card.key])
                 }}
               </div>
               <div class="text-body-2 stat-label">
@@ -633,8 +649,10 @@ onMounted(fetchStats)
 .stat-number {
   letter-spacing: -0.5px;
   line-height: 1.2;
-  font-size: 1.75rem !important;
+  font-size: 1.5rem !important;
   font-weight: 700 !important;
+  white-space: nowrap;
+  word-break: break-all;
 }
 
 /* Etiqueta de estadística */
