@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import {
   getReporteClientes,
   getReporteProductos,
@@ -18,6 +18,16 @@ import {
 const loading = ref(false)
 const error = ref('')
 const activeTab = ref('clientes')
+
+// Filtros de período
+const fechaDesde = ref('')
+const fechaHasta = ref('')
+
+// Establecer fechas por defecto (último mes)
+const hoy = new Date()
+const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
+fechaDesde.value = primerDiaMes.toISOString().split('T')[0]
+fechaHasta.value = hoy.toISOString().split('T')[0]
 
 const reporteClientes = ref([])
 const reporteProductos = ref([])
@@ -56,11 +66,16 @@ const fetchReportes = async () => {
   loading.value = true
   error.value = ''
   try {
+    // Construir parámetros de período si están definidos
+    const params = {}
+    if (fechaDesde.value) params.fecha_desde = fechaDesde.value
+    if (fechaHasta.value) params.fecha_hasta = fechaHasta.value
+    
     const [clientes, productos, proveedores, ventas] = await Promise.all([
-      getReporteClientes(),
-      getReporteProductos(),
-      getReporteProveedores(),
-      getReporteVentas(),
+      getReporteClientes(params),
+      getReporteProductos(params),
+      getReporteProveedores(params),
+      getReporteVentas(params),
     ])
     
     reporteClientes.value = Array.isArray(clientes) ? clientes : (clientes.data ?? [])
@@ -77,22 +92,27 @@ const fetchReportes = async () => {
 
 const exportar = (tipo, formato) => {
   try {
+    // Construir parámetros de período
+    const params = {}
+    if (fechaDesde.value) params.fecha_desde = fechaDesde.value
+    if (fechaHasta.value) params.fecha_hasta = fechaHasta.value
+    
     const exportFunctions = {
       clientes: {
-        excel: exportClientesExcel,
-        csv: exportClientesCSV,
+        excel: () => exportClientesExcel(params),
+        csv: () => exportClientesCSV(params),
       },
       productos: {
-        excel: exportProductosExcel,
-        csv: exportProductosCSV,
+        excel: () => exportProductosExcel(params),
+        csv: () => exportProductosCSV(params),
       },
       proveedores: {
-        excel: exportProveedoresExcel,
-        csv: exportProveedoresCSV,
+        excel: () => exportProveedoresExcel(params),
+        csv: () => exportProveedoresCSV(params),
       },
       ventas: {
-        excel: exportVentasExcel,
-        csv: exportVentasCSV,
+        excel: () => exportVentasExcel(params),
+        csv: () => exportVentasCSV(params),
       },
     }
     
@@ -130,12 +150,34 @@ onMounted(fetchReportes)
   <div class="pa-6">
     <VCard>
       <VCardTitle>
-        <div class="d-flex justify-space-between align-center">
+        <div class="d-flex justify-space-between align-center flex-wrap ga-4">
           <span class="text-h5">Reportes</span>
-          <VBtn color="primary" @click="fetchReportes" :loading="loading">
-            <VIcon start>mdi-refresh</VIcon>
-            Actualizar
-          </VBtn>
+          <div class="d-flex ga-2 align-center flex-wrap">
+            <VTextField
+              v-model="fechaDesde"
+              label="Desde"
+              type="date"
+              density="compact"
+              hide-details
+              style="max-width: 160px;"
+            />
+            <VTextField
+              v-model="fechaHasta"
+              label="Hasta"
+              type="date"
+              density="compact"
+              hide-details
+              style="max-width: 160px;"
+            />
+            <VBtn color="primary" @click="fetchReportes" :loading="loading">
+              <VIcon start>mdi-filter</VIcon>
+              Aplicar Filtros
+            </VBtn>
+            <VBtn color="secondary" variant="tonal" @click="fetchReportes" :loading="loading">
+              <VIcon start>mdi-refresh</VIcon>
+              Actualizar
+            </VBtn>
+          </div>
         </div>
       </VCardTitle>
 

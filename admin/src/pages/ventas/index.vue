@@ -159,10 +159,6 @@ onMounted(async () => {
       <VCardTitle>
         <div class="d-flex justify-space-between align-center">
           <span class="text-h5">Historial de Ventas</span>
-          <VBtn color="primary" :to="'/ventas/nueva'">
-            <VIcon left>ri-add-line</VIcon>
-            Nueva Venta
-          </VBtn>
         </div>
       </VCardTitle>
 

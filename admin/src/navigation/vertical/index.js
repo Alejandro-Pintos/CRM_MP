@@ -12,8 +12,19 @@ export default [
 
   {
     title: 'Clientes',
-    to: '/clientes',
-  icon: { icon: 'ri-group-line' },
+    icon: { icon: 'ri-group-line' },
+    children: [
+      {
+        title: 'Lista de Clientes',
+        to: '/clientes',
+        icon: { icon: 'ri-group-line' },
+      },
+      {
+        title: 'Cuentas Corrientes',
+        to: '/clientes/cuentas-corrientes',
+        icon: { icon: 'ri-file-list-2-line' },
+      },
+    ],
   },
   {
     title: 'Proveedores',
@@ -32,8 +43,19 @@ export default [
   },
   {
     title: 'Ventas',
-    to: '/ventas',
     icon: { icon: 'ri-funds-line' },
+    children: [
+      {
+        title: 'Nueva Venta',
+        to: '/ventas/nueva',
+        icon: { icon: 'ri-add-circle-line' },
+      },
+      {
+        title: 'Historial',
+        to: '/ventas',
+        icon: { icon: 'ri-file-list-3-line' },
+      },
+    ],
   },
   {
     title: 'Reportes',

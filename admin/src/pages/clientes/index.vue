@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { getClientes, createCliente, updateCliente, deleteCliente, getCuentaCorriente } from '@/services/clientes'
 import { toast } from '@/plugins/toast'
 
@@ -12,6 +12,9 @@ const dialogCuentaCorriente = ref(false)
 const editedIndex = ref(-1)
 const selectedCliente = ref(null)
 const cuentaCorriente = ref([])
+const search = ref('')
+const tieneCuentaCorriente = ref(false)
+const requiereFactura = ref(true)
 
 const editedItem = ref({
   id: null,
@@ -25,6 +28,7 @@ const editedItem = ref({
   cuit_cuil: '',
   limite_credito: 0,
   estado: 'activo',
+  requiere_factura: true,
 })
 
 const defaultItem = {
@@ -39,7 +43,40 @@ const defaultItem = {
   cuit_cuil: '',
   limite_credito: 0,
   estado: 'activo',
+  requiere_factura: true,
 }
+
+// Watcher para resetear límite de crédito cuando se desactiva cuenta corriente
+watch(tieneCuentaCorriente, (nuevoValor) => {
+  if (!nuevoValor) {
+    editedItem.value.limite_credito = 0
+  }
+})
+
+// Watcher para sincronizar requiere_factura con el modelo
+watch(requiereFactura, (nuevoValor) => {
+  editedItem.value.requiere_factura = nuevoValor
+})
+
+// Filtrar clientes por búsqueda
+const clientesFiltrados = computed(() => {
+  if (!search.value) return clientes.value
+  
+  const searchLower = search.value.toLowerCase()
+  return clientes.value.filter(cliente => {
+    const nombreCompleto = `${cliente.nombre} ${cliente.apellido}`.toLowerCase()
+    const email = (cliente.email || '').toLowerCase()
+    const telefono = (cliente.telefono || '').toLowerCase()
+    const ciudad = (cliente.ciudad || '').toLowerCase()
+    const cuit = (cliente.cuit_cuil || '').toLowerCase()
+    
+    return nombreCompleto.includes(searchLower) ||
+           email.includes(searchLower) ||
+           telefono.includes(searchLower) ||
+           ciudad.includes(searchLower) ||
+           cuit.includes(searchLower)
+  })
+})
 
 const headers = [
   { title: 'ID', key: 'id' },
@@ -84,6 +121,10 @@ const fetchClientes = async () => {
 const editItem = (item) => {
   editedIndex.value = clientes.value.indexOf(item)
   editedItem.value = Object.assign({}, item)
+  // Establecer el estado del switch basado en si tiene límite de crédito
+  tieneCuentaCorriente.value = (item.limite_credito ?? 0) > 0
+  // Establecer el estado del switch de factura
+  requiereFactura.value = item.requiere_factura ?? true
   dialog.value = true
 }
 
@@ -96,9 +137,9 @@ const deleteItem = (item) => {
 const deleteItemConfirm = async () => {
   try {
     await deleteCliente(editedItem.value.id)
-    clientes.value.splice(editedIndex.value, 1)
     toast.success('Cliente eliminado correctamente')
     closeDelete()
+    await fetchClientes() // Refrescar lista después de eliminar
   } catch (e) {
     const errorMsg = e.message || 'Error al eliminar cliente'
     error.value = errorMsg
@@ -122,6 +163,8 @@ const verCuentaCorriente = async (item) => {
 const close = () => {
   dialog.value = false
   error.value = ''
+  tieneCuentaCorriente.value = false
+  requiereFactura.value = true
   setTimeout(() => {
     editedItem.value = Object.assign({}, defaultItem)
     editedIndex.value = -1
@@ -146,9 +189,9 @@ const save = async () => {
     } else {
       await createCliente(editedItem.value)
       toast.success('Cliente creado correctamente')
-      await fetchClientes() // Refrescar lista
     }
     close()
+    await fetchClientes() // Refrescar lista siempre
   } catch (e) {
     const errorMsg = e.message || 'Error al guardar cliente'
     error.value = errorMsg
@@ -170,11 +213,24 @@ onMounted(fetchClientes)
   <div class="pa-6">
     <VCard>
       <VCardTitle>
-        <div class="d-flex justify-space-between align-center">
+        <div class="d-flex justify-space-between align-center flex-wrap ga-4">
           <span class="text-h5">Clientes</span>
-          <VBtn color="primary" @click="dialog = true">
-            Nuevo Cliente
-          </VBtn>
+          <div class="d-flex ga-2 align-center">
+            <VTextField
+              v-model="search"
+              prepend-inner-icon="mdi-magnify"
+              label="Buscar clientes"
+              single-line
+              hide-details
+              density="compact"
+              style="min-width: 300px;"
+              clearable
+            />
+            <VBtn color="primary" @click="dialog = true">
+              <VIcon start>mdi-plus</VIcon>
+              Nuevo Cliente
+            </VBtn>
+          </div>
         </div>
       </VCardTitle>
 
@@ -185,7 +241,7 @@ onMounted(fetchClientes)
 
         <VDataTable
           :headers="headers"
-          :items="clientes"
+          :items="clientesFiltrados"
           :loading="loading"
           loading-text="Cargando clientes..."
           no-data-text="No hay clientes registrados"
@@ -309,18 +365,68 @@ onMounted(fetchClientes)
                   label="Dirección"
                 />
               </VCol>
+              
+              <!-- Divisor visual para sección de cuenta corriente -->
+              <VCol cols="12">
+                <VDivider class="my-2" />
+              </VCol>
+
+              <!-- Switch para requerir factura -->
               <VCol cols="12" md="6">
+                <VSwitch
+                  v-model="requiereFactura"
+                  label="¿Requiere Factura?"
+                  color="primary"
+                  hide-details
+                  density="comfortable"
+                >
+                  <template #label>
+                    <div class="d-flex flex-column">
+                      <span class="text-body-1 font-weight-medium">¿Requiere Factura?</span>
+                      <span class="text-caption text-medium-emphasis">
+                        Se emitirá comprobante fiscal para este cliente
+                      </span>
+                    </div>
+                  </template>
+                </VSwitch>
+              </VCol>
+
+              <!-- Switch para habilitar cuenta corriente -->
+              <VCol cols="12" md="6">
+                <VSwitch
+                  v-model="tieneCuentaCorriente"
+                  label="¿Habilitar Cuenta Corriente?"
+                  color="primary"
+                  hide-details
+                  density="comfortable"
+                >
+                  <template #label>
+                    <div class="d-flex flex-column">
+                      <span class="text-body-1 font-weight-medium">¿Habilitar Cuenta Corriente?</span>
+                      <span class="text-caption text-medium-emphasis">
+                        Permite al cliente realizar compras a crédito y gestionar saldos pendientes
+                      </span>
+                    </div>
+                  </template>
+                </VSwitch>
+              </VCol>
+
+              <!-- Campo de límite de crédito (solo visible si cuenta corriente está habilitada) -->
+              <VCol v-if="tieneCuentaCorriente" cols="12" md="6">
                 <VTextField
                   v-model.number="editedItem.limite_credito"
-                  label="Límite de Crédito"
+                  label="Límite de Crédito*"
                   type="number"
                   min="0"
                   step="0.01"
                   prefix="$"
                   hint="Monto máximo que el cliente puede deber"
+                  persistent-hint
+                  :rules="[v => v > 0 || 'El límite debe ser mayor a 0']"
                 />
               </VCol>
-              <VCol cols="12" md="6">
+
+              <VCol cols="12" :md="tieneCuentaCorriente ? 6 : 12">
                 <VSelect
                   v-model="editedItem.estado"
                   :items="['activo', 'inactivo']"

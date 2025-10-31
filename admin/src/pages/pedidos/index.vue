@@ -16,6 +16,9 @@ const editedIndex = ref(-1)
 const loadingClima = ref(false)
 const climaInfo = ref(null)
 const pronosticoExtendido = ref([])
+const search = ref('')
+const filtroEstado = ref('')
+const busquedaProductos = ref({}) // Objeto para guardar búsqueda por item index
 
 // Función para obtener valores por defecto del formulario
 const getDefaultItem = () => ({
@@ -101,6 +104,49 @@ const fetchProductos = async () => {
   }
 }
 
+// Filtrar productos por búsqueda (nombre o código)
+const productosFiltrados = computed(() => {
+  return (index) => {
+    const busqueda = busquedaProductos.value[index]
+    if (!busqueda || busqueda.trim() === '') {
+      return productos.value
+    }
+    
+    const searchLower = busqueda.toLowerCase().trim()
+    return productos.value.filter(p => {
+      const nombre = (p.nombre || '').toLowerCase()
+      const codigo = (p.codigo || '').toLowerCase()
+      return nombre.includes(searchLower) || codigo.includes(searchLower)
+    })
+  }
+})
+
+// Filtrar pedidos por búsqueda y estado
+const pedidosFiltrados = computed(() => {
+  let resultado = pedidos.value
+  
+  // Filtrar por estado
+  if (filtroEstado.value) {
+    resultado = resultado.filter(pedido => pedido.estado === filtroEstado.value)
+  }
+  
+  // Filtrar por búsqueda
+  if (search.value) {
+    const searchLower = search.value.toLowerCase()
+    resultado = resultado.filter(pedido => {
+      const cliente = (pedido.cliente_nombre || '').toLowerCase()
+      const id = String(pedido.id || '')
+      const ciudad = (pedido.ciudad_entrega || '').toLowerCase()
+      
+      return cliente.includes(searchLower) ||
+             id.includes(searchLower) ||
+             ciudad.includes(searchLower)
+    })
+  }
+  
+  return resultado
+})
+
 const editItem = (item) => {
   editedIndex.value = pedidos.value.indexOf(item)
   editedItem.value = Object.assign({}, item)
@@ -148,9 +194,9 @@ const deleteItem = (item) => {
 const deleteItemConfirm = async () => {
   try {
     await deletePedido(editedItem.value.id)
-    pedidos.value.splice(editedIndex.value, 1)
     toast.success('Pedido eliminado correctamente')
     closeDelete()
+    await fetchPedidos() // Refrescar lista después de eliminar
   } catch (e) {
     const errorMsg = e.message || 'Error al eliminar pedido'
     error.value = errorMsg
@@ -182,8 +228,12 @@ const agregarItem = () => {
   editedItem.value.items.push({
     producto_id: null,
     cantidad: 1,
+    precio_compra: 0,
+    precio_venta: 0,
+    porcentaje_iva: 0,
     precio_unitario: 0,
     observaciones: '',
+    mostrarResultados: false,
   })
 }
 
@@ -191,11 +241,47 @@ const eliminarItem = (index) => {
   editedItem.value.items.splice(index, 1)
 }
 
+const seleccionarProducto = (item, producto, index) => {
+  // Asignar el producto seleccionado
+  item.producto_id = producto.id
+  
+  // Asignar precios de compra y venta
+  item.precio_compra = producto.precio_compra
+  item.precio_venta = producto.precio_venta
+  item.porcentaje_iva = producto.porcentaje_iva
+  
+  // Actualizar precios
+  actualizarPrecio(item)
+  
+  // Actualizar campo de búsqueda con el nombre del producto
+  busquedaProductos.value[index] = `${producto.codigo} - ${producto.nombre}`
+  
+  // Cerrar la lista de resultados
+  item.mostrarResultados = false
+}
+
 const actualizarPrecio = (item) => {
   const producto = productos.value.find(p => p.id === item.producto_id)
   if (producto) {
-    item.precio_unitario = producto.precio || 0
+    // No modificar precio_unitario automáticamente, solo calcular el total
+    item.producto_precio_compra = producto.precio_compra
+    item.producto_precio_venta = producto.precio_venta
+    item.producto_porcentaje_iva = producto.porcentaje_iva
   }
+}
+
+// Calcular total del producto (precio_compra + precio_venta + IVA)
+const calcularTotalProducto = (item) => {
+  // Usar los valores del item si están disponibles
+  const precioCompra = parseFloat(item.precio_compra || 0)
+  const precioVenta = parseFloat(item.precio_venta || 0)
+  const porcentajeIva = parseFloat(item.porcentaje_iva || 0)
+  
+  // Calcular IVA sobre precio de venta
+  const montoIva = precioVenta * (porcentajeIva / 100)
+  
+  // Total = precio_compra + precio_venta + IVA
+  return precioCompra + precioVenta + montoIva
 }
 
 const totalPedido = computed(() => {
@@ -400,12 +486,39 @@ onMounted(() => {
   <div class="pa-6">
     <VCard>
       <VCardTitle>
-        <div class="d-flex justify-space-between align-center">
+        <div class="d-flex justify-space-between align-center flex-wrap ga-4">
           <span class="text-h5">Pedidos</span>
-          <VBtn color="primary" @click="openNewPedido">
-            <VIcon start>mdi-plus</VIcon>
-            Nuevo Pedido
-          </VBtn>
+          <div class="d-flex ga-2 align-center flex-wrap">
+            <VSelect
+              v-model="filtroEstado"
+              :items="[
+                { title: 'Todos', value: '' },
+                { title: 'Pendiente', value: 'pendiente' },
+                { title: 'En proceso', value: 'en_proceso' },
+                { title: 'Entregado', value: 'entregado' },
+                { title: 'Cancelado', value: 'cancelado' }
+              ]"
+              label="Estado"
+              density="compact"
+              hide-details
+              style="min-width: 150px;"
+              clearable
+            />
+            <VTextField
+              v-model="search"
+              prepend-inner-icon="mdi-magnify"
+              label="Buscar pedidos"
+              single-line
+              hide-details
+              density="compact"
+              style="min-width: 250px;"
+              clearable
+            />
+            <VBtn color="primary" @click="openNewPedido">
+              <VIcon start>mdi-plus</VIcon>
+              Nuevo Pedido
+            </VBtn>
+          </div>
         </div>
       </VCardTitle>
 
@@ -416,7 +529,7 @@ onMounted(() => {
 
         <VDataTable
           :headers="headers"
-          :items="pedidos"
+          :items="pedidosFiltrados"
           :loading="loading"
           loading-text="Cargando pedidos..."
           no-data-text="No hay pedidos registrados"
@@ -722,7 +835,7 @@ onMounted(() => {
               <!-- Productos del Pedido -->
               <VCol cols="12">
                 <VDivider class="my-2" />
-                <div class="d-flex justify-space-between align-center mb-2">
+                <div class="d-flex justify-space-between align-center mb-3">
                   <span class="text-h6">Productos</span>
                   <VBtn color="success" size="small" @click="agregarItem">
                     <VIcon start>mdi-plus</VIcon>
@@ -730,27 +843,128 @@ onMounted(() => {
                   </VBtn>
                 </div>
 
-                <div v-for="(item, index) in editedItem.items" :key="index" class="mb-2">
+                <div v-for="(item, index) in editedItem.items" :key="index" class="mb-3">
                   <VCard variant="outlined">
                     <VCardText>
                       <VRow>
-                        <VCol cols="12" md="5">
-                          <VSelect
-                            v-model="item.producto_id"
-                            :items="productos"
-                            item-title="nombre"
-                            item-value="id"
-                            label="Producto"
-                            @update:model-value="actualizarPrecio(item)"
+                        <VCol cols="12">
+                          <!-- Campo de búsqueda con resultados desplegables -->
+                          <div class="position-relative">
+                            <VTextField
+                              v-model="busquedaProductos[index]"
+                              label="🔍 Buscar producto por nombre o código"
+                              prepend-inner-icon="mdi-magnify"
+                              clearable
+                              density="compact"
+                              variant="outlined"
+                              hide-details
+                              placeholder="Ej: Poste, PROD-00013, Viga..."
+                              @focus="() => { item.mostrarResultados = true }"
+                              @blur="() => { setTimeout(() => { item.mostrarResultados = false }, 200) }"
+                            />
+                            
+                            <!-- Lista de resultados desplegable -->
+                            <VCard
+                              v-if="item.mostrarResultados && busquedaProductos[index] && productosFiltrados(index).length > 0"
+                              class="position-absolute w-100 mt-1"
+                              style="z-index: 1000; max-height: 300px; overflow-y: auto;"
+                              elevation="8"
+                            >
+                              <VList density="compact">
+                                <VListItem
+                                  v-for="producto in productosFiltrados(index).slice(0, 10)"
+                                  :key="producto.id"
+                                  @click="seleccionarProducto(item, producto, index)"
+                                  class="cursor-pointer"
+                                  hover
+                                >
+                                  <template #prepend>
+                                    <VChip size="x-small" color="primary" class="mr-2">
+                                      {{ producto.codigo }}
+                                    </VChip>
+                                  </template>
+                                  <VListItemTitle>{{ producto.nombre }}</VListItemTitle>
+                                  <VListItemSubtitle>
+                                    Compra: ${{ producto.precio_compra }} | Venta: ${{ producto.precio_venta }} | IVA: {{ producto.porcentaje_iva }}%
+                                  </VListItemSubtitle>
+                                </VListItem>
+                              </VList>
+                            </VCard>
+                            
+                            <!-- Mensaje cuando no hay resultados -->
+                            <VCard
+                              v-if="item.mostrarResultados && busquedaProductos[index] && busquedaProductos[index].length > 2 && productosFiltrados(index).length === 0"
+                              class="position-absolute w-100 mt-1"
+                              style="z-index: 1000;"
+                              elevation="4"
+                            >
+                              <VCardText class="text-center text-medium-emphasis py-3">
+                                <VIcon class="mb-2">mdi-magnify-close</VIcon>
+                                <div>No se encontraron productos</div>
+                              </VCardText>
+                            </VCard>
+                          </div>
+                        </VCol>
+                      </VRow>
+                      
+                      <!-- Fila 1: Producto y Cantidad -->
+                      <VRow class="mt-3">
+                        <VCol cols="12" md="8">
+                          <!-- Mostrar producto seleccionado -->
+                          <VTextField
+                            :model-value="item.producto_id ? productos.find(p => p.id === item.producto_id)?.nombre : ''"
+                            label="Producto Seleccionado"
+                            readonly
+                            density="compact"
+                            variant="outlined"
+                            prepend-inner-icon="mdi-check-circle"
+                            :placeholder="item.producto_id ? '' : 'Ningún producto seleccionado'"
+                          >
+                            <template #prepend v-if="item.producto_id">
+                              <VChip size="x-small" color="success" class="mr-2">
+                                {{ productos.find(p => p.id === item.producto_id)?.codigo }}
+                              </VChip>
+                            </template>
+                          </VTextField>
+                        </VCol>
+                        <VCol cols="12" md="4">
+                          <VTextField
+                            v-model.number="item.cantidad"
+                            label="Cant./Metros"
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            density="compact"
+                          />
+                        </VCol>
+                      </VRow>
+                      
+                      <!-- Fila 2: Precios y Totales -->
+                      <VRow>
+                        <VCol cols="6" md="2">
+                          <VTextField
+                            v-model.number="item.precio_compra"
+                            label="P. Compra"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            prefix="$"
+                            density="compact"
+                            :readonly="!!item.producto_id"
+                            :bg-color="item.producto_id ? 'grey-lighten-4' : 'white'"
                           />
                         </VCol>
                         <VCol cols="6" md="2">
                           <VTextField
-                            v-model.number="item.cantidad"
-                            label="Cantidad"
+                            v-model.number="item.precio_venta"
+                            label="P. Venta"
                             type="number"
-                            min="0.01"
+                            min="0"
                             step="0.01"
+                            prefix="$"
+                            density="compact"
+                            :readonly="!!item.producto_id"
+                            :bg-color="item.producto_id ? 'grey-lighten-4' : 'white'"
                           />
                         </VCol>
                         <VCol cols="6" md="2">
@@ -761,16 +975,40 @@ onMounted(() => {
                             min="0"
                             step="0.01"
                             prefix="$"
+                            density="compact"
                           />
                         </VCol>
-                        <VCol cols="10" md="2">
+                        <VCol cols="6" md="3">
+                          <VTextField
+                            :model-value="formatPrice(calcularTotalProducto(item))"
+                            label="Total Producto"
+                            readonly
+                            density="compact"
+                            hint="Compra+Venta+IVA"
+                            persistent-hint
+                            bg-color="success-lighten-5"
+                          />
+                        </VCol>
+                        <VCol cols="6" md="2">
+                          <VTextField
+                            :model-value="formatPrice(calcularTotalProducto(item))"
+                            label="Total Producto"
+                            readonly
+                            density="compact"
+                            hint="Compra+Venta+IVA"
+                            persistent-hint
+                            bg-color="success-lighten-5"
+                          />
+                        </VCol>
+                        <VCol cols="6" md="2">
                           <VTextField
                             :model-value="formatPrice(item.cantidad * item.precio_unitario)"
                             label="Subtotal"
                             readonly
+                            density="compact"
                           />
                         </VCol>
-                        <VCol cols="2" md="1" class="d-flex align-center">
+                        <VCol cols="12" md="1" class="d-flex align-center justify-center">
                           <VBtn
                             icon
                             size="small"
@@ -787,10 +1025,24 @@ onMounted(() => {
                 </div>
 
                 <VCard v-if="editedItem.items.length > 0" color="primary" variant="tonal" class="mt-4">
-                  <VCardText>
-                    <div class="text-h6 text-right">
-                      Total del Pedido: {{ formatPrice(totalPedido) }}
-                    </div>
+                  <VCardText class="pa-4">
+                    <VRow align="center">
+                      <VCol cols="12" md="6">
+                        <div class="text-caption text-medium-emphasis mb-1">
+                          <VIcon size="small" class="mr-1">mdi-information-outline</VIcon>
+                          El "Total Producto" muestra: Compra + Venta + IVA
+                        </div>
+                        <div class="text-caption text-medium-emphasis">
+                          El "Subtotal" se calcula con el Precio Unit. ingresado
+                        </div>
+                      </VCol>
+                      <VCol cols="12" md="6" class="text-right">
+                        <div class="text-caption mb-1">Total del Pedido</div>
+                        <div class="text-h5 font-weight-bold">
+                          {{ formatPrice(totalPedido) }}
+                        </div>
+                      </VCol>
+                    </VRow>
                   </VCardText>
                 </VCard>
               </VCol>
@@ -840,5 +1092,21 @@ onMounted(() => {
 
 .compact-weather-card .v-card-text {
   padding: 8px !important;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.position-relative {
+  position: relative;
+}
+
+.position-absolute {
+  position: absolute;
+}
+
+.w-100 {
+  width: 100%;
 }
 </style>

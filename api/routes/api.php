@@ -29,10 +29,14 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
     Route::post('pedidos/{pedido}/asociar-venta', [PedidoController::class, 'asociarVenta'])->name('pedidos.asociar_venta');
     Route::get('clima', [PedidoController::class, 'getClima'])->name('clima.get');
     
-        Route::apiResource('ventas', VentaController::class)
+    Route::apiResource('ventas', VentaController::class)
         ->parameters(['ventas' => 'venta'])
         ->only(['index','store','show'])
         ->names('ventas');
+
+    // Previsualizar próximo número de comprobante
+    Route::get('ventas/previsualizar-numero', [VentaController::class, 'previsualizarNumero'])
+        ->name('ventas.previsualizar_numero');
 
     // Pagos por venta  
     Route::get('ventas/{venta}/pagos', [PagoController::class, 'index'])->name('pagos.index');

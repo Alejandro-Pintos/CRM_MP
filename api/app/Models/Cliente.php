@@ -25,6 +25,7 @@ class Cliente extends Model
         'estado',
         'saldo_actual',
         'limite_credito',
+        'requiere_factura',
     ];
 
     /**
@@ -38,6 +39,7 @@ class Cliente extends Model
         'deleted_at' => 'datetime',
         'saldo_actual' => 'decimal:2',
         'limite_credito' => 'decimal:2',
+        'requiere_factura' => 'boolean',
     ];
 
     // Relación con Compras (se implementará después)

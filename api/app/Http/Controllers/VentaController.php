@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\VentaStoreRequest;
 use App\Http\Resources\VentaResource;
 use App\Models\Venta;
+use App\Models\ComprobanteNumeracion;
 use App\Services\VentaService;
 use Illuminate\Http\Request;
 
@@ -70,5 +71,26 @@ public function store(VentaStoreRequest $request, VentaService $service)
     {
         $venta->load('items');
         return new VentaResource($venta);
+    }
+
+    /**
+     * Previsualizar el próximo número de comprobante.
+     */
+    public function previsualizarNumero(Request $request)
+    {
+        $tipoComprobante = $request->input('tipo_comprobante');
+        $puntoVenta = $request->input('punto_venta', '0001');
+
+        if (!$tipoComprobante) {
+            return response()->json(['error' => 'Tipo de comprobante requerido'], 400);
+        }
+
+        $numero = ComprobanteNumeracion::previsualizarNumero($tipoComprobante, $puntoVenta);
+
+        return response()->json([
+            'tipo_comprobante' => $tipoComprobante,
+            'punto_venta' => $puntoVenta,
+            'numero' => $numero,
+        ]);
     }
 }

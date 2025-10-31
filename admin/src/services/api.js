@@ -13,10 +13,51 @@ export async function apiFetch(path, { method = 'GET', body, headers = {} } = {}
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   })
+  
   if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(`${method} ${path} failed (HTTP ${res.status}) ${text || ''}`.trim())
+    // Si es 401 (No autenticado), limpiar sesión y redirigir al login
+    if (res.status === 401) {
+      localStorage.removeItem('accessToken')
+      localStorage.removeItem('userData')
+      localStorage.removeItem('sessionStartTime')
+      localStorage.removeItem('lastActivity')
+      
+      // Redirigir al login
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
+      
+      throw new Error('Sesión expirada. Por favor, inicia sesión nuevamente.')
+    }
+    
+    // Parsear respuesta de error
+    let errorData
+    try {
+      errorData = await res.json()
+    } catch {
+      errorData = { message: await res.text().catch(() => 'Error desconocido') }
+    }
+    
+    // Formatear mensaje de error
+    let errorMessage = errorData.message || 'Error en la solicitud'
+    
+    // Si hay errores de validación, formatearlos
+    if (errorData.errors && typeof errorData.errors === 'object') {
+      const errorsArray = Object.values(errorData.errors).flat()
+      if (errorsArray.length > 0) {
+        errorMessage = errorsArray.join('. ')
+      }
+    }
+    
+    // Crear error con información adicional
+    const error = new Error(errorMessage)
+    error.status = res.status
+    error.errors = errorData.errors || {}
+    error.data = errorData
+    
+    throw error
   }
+  
   // algunas rutas pueden devolver 204
   return res.status === 204 ? null : res.json()
 }

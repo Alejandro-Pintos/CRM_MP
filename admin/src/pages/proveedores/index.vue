@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { getProveedores, createProveedor, updateProveedor, deleteProveedor } from '@/services/proveedores'
 import { toast } from '@/plugins/toast'
 
@@ -9,6 +9,8 @@ const error = ref('')
 const dialog = ref(false)
 const dialogDelete = ref(false)
 const editedIndex = ref(-1)
+const search = ref('')
+
 const editedItem = ref({
   id: null,
   nombre: '',
@@ -27,6 +29,24 @@ const defaultItem = {
   email: '',
   estado: 'activo',
 }
+
+// Filtrar proveedores por búsqueda
+const proveedoresFiltrados = computed(() => {
+  if (!search.value) return proveedores.value
+  
+  const searchLower = search.value.toLowerCase()
+  return proveedores.value.filter(proveedor => {
+    const nombre = (proveedor.nombre || '').toLowerCase()
+    const cuit = (proveedor.cuit || '').toLowerCase()
+    const email = (proveedor.email || '').toLowerCase()
+    const telefono = (proveedor.telefono || '').toLowerCase()
+    
+    return nombre.includes(searchLower) ||
+           cuit.includes(searchLower) ||
+           email.includes(searchLower) ||
+           telefono.includes(searchLower)
+  })
+})
 
 const headers = [
   { title: 'ID', key: 'id' },
@@ -68,9 +88,9 @@ const deleteItem = (item) => {
 const deleteItemConfirm = async () => {
   try {
     await deleteProveedor(editedItem.value.id)
-    proveedores.value.splice(editedIndex.value, 1)
     toast.success('Proveedor eliminado correctamente')
     closeDelete()
+    await fetchProveedores() // Refrescar lista después de eliminar
   } catch (e) {
     const errorMsg = e.message || 'Error al eliminar proveedor'
     error.value = errorMsg
@@ -105,9 +125,9 @@ const save = async () => {
     } else {
       await createProveedor(editedItem.value)
       toast.success('Proveedor creado correctamente')
-      await fetchProveedores() // Refrescar lista
     }
     close()
+    await fetchProveedores() // Refrescar lista siempre
   } catch (e) {
     const errorMsg = e.message || 'Error al guardar proveedor'
     error.value = errorMsg
@@ -122,11 +142,24 @@ onMounted(fetchProveedores)
   <div class="pa-6">
     <VCard>
       <VCardTitle>
-        <div class="d-flex justify-space-between align-center">
+        <div class="d-flex justify-space-between align-center flex-wrap ga-4">
           <span class="text-h5">Proveedores</span>
-          <VBtn color="primary" @click="dialog = true">
-            Nuevo Proveedor
-          </VBtn>
+          <div class="d-flex ga-2 align-center">
+            <VTextField
+              v-model="search"
+              prepend-inner-icon="mdi-magnify"
+              label="Buscar proveedores"
+              single-line
+              hide-details
+              density="compact"
+              style="min-width: 300px;"
+              clearable
+            />
+            <VBtn color="primary" @click="dialog = true">
+              <VIcon start>mdi-plus</VIcon>
+              Nuevo Proveedor
+            </VBtn>
+          </div>
         </div>
       </VCardTitle>
 
@@ -137,7 +170,7 @@ onMounted(fetchProveedores)
 
         <VDataTable
           :headers="headers"
-          :items="proveedores"
+          :items="proveedoresFiltrados"
           :loading="loading"
           loading-text="Cargando proveedores..."
           no-data-text="No hay proveedores registrados"

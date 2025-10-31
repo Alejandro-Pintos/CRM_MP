@@ -81,6 +81,9 @@ class DatabaseSeeder extends Seeder
         // Asignar rol de administrador al usuario
         $admin->assignRole($adminRole);
 
+        // Llamar a seeders de datos base
+        $this->call(MetodoPagoSeeder::class);
+        
         // Llamar al seeder de datos de prueba
         $this->call(TestDataSeeder::class);
     }

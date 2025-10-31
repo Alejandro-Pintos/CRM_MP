@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { getProductos, createProducto, updateProducto, deleteProducto } from '@/services/productos'
 import { getProveedores } from '@/services/proveedores'
 import { toast } from '@/plugins/toast'
@@ -11,12 +11,16 @@ const error = ref('')
 const dialog = ref(false)
 const dialogDelete = ref(false)
 const editedIndex = ref(-1)
+const search = ref('')
+
 const editedItem = ref({
   id: null,
   codigo: '',
   nombre: '',
   descripcion: '',
   unidad_medida: 'u',
+  precio_compra: 0,
+  precio_venta: 0,
   precio: 0,
   iva: 21.00,
   estado: 'activo',
@@ -28,11 +32,29 @@ const defaultItem = {
   nombre: '',
   descripcion: '',
   unidad_medida: 'u',
+  precio_compra: 0,
+  precio_venta: 0,
   precio: 0,
   iva: 21.00,
   estado: 'activo',
   proveedor_id: null,
 }
+
+// Filtrar productos por búsqueda
+const productosFiltrados = computed(() => {
+  if (!search.value) return productos.value
+  
+  const searchLower = search.value.toLowerCase()
+  return productos.value.filter(producto => {
+    const codigo = (producto.codigo || '').toLowerCase()
+    const nombre = (producto.nombre || '').toLowerCase()
+    const descripcion = (producto.descripcion || '').toLowerCase()
+    
+    return codigo.includes(searchLower) ||
+           nombre.includes(searchLower) ||
+           descripcion.includes(searchLower)
+  })
+})
 
 const headers = [
   { title: 'ID', key: 'id' },
@@ -84,9 +106,9 @@ const deleteItem = (item) => {
 const deleteItemConfirm = async () => {
   try {
     await deleteProducto(editedItem.value.id)
-    productos.value.splice(editedIndex.value, 1)
     toast.success('Producto eliminado correctamente')
     closeDelete()
+    await fetchProductos() // Refrescar lista después de eliminar
   } catch (e) {
     const errorMsg = e.message || 'Error al eliminar producto'
     error.value = errorMsg
@@ -121,9 +143,9 @@ const save = async () => {
     } else {
       await createProducto(editedItem.value)
       toast.success('Producto creado correctamente')
-      await fetchProductos() // Refrescar lista para obtener el nuevo producto
     }
     close()
+    await fetchProductos() // Refrescar lista siempre
   } catch (e) {
     const errorMsg = e.message || 'Error al guardar producto'
     error.value = errorMsg
@@ -148,11 +170,24 @@ onMounted(async () => {
   <div class="pa-6">
     <VCard>
       <VCardTitle>
-        <div class="d-flex justify-space-between align-center">
+        <div class="d-flex justify-space-between align-center flex-wrap ga-4">
           <span class="text-h5">Productos</span>
-          <VBtn color="primary" @click="dialog = true">
-            Nuevo Producto
-          </VBtn>
+          <div class="d-flex ga-2 align-center">
+            <VTextField
+              v-model="search"
+              prepend-inner-icon="mdi-magnify"
+              label="Buscar productos"
+              single-line
+              hide-details
+              density="compact"
+              style="min-width: 300px;"
+              clearable
+            />
+            <VBtn color="primary" @click="dialog = true">
+              <VIcon start>mdi-plus</VIcon>
+              Nuevo Producto
+            </VBtn>
+          </div>
         </div>
       </VCardTitle>
 
@@ -163,7 +198,7 @@ onMounted(async () => {
 
         <VDataTable
           :headers="headers"
-          :items="productos"
+          :items="productosFiltrados"
           :loading="loading"
           loading-text="Cargando productos..."
           no-data-text="No hay productos registrados"
