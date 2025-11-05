@@ -84,6 +84,9 @@ class PedidoController extends Controller
                     'pedido_id' => $pedido->id,
                     'producto_id' => $item['producto_id'],
                     'cantidad' => $item['cantidad'],
+                    'precio_compra' => $item['precio_compra'] ?? 0,
+                    'precio_venta' => $item['precio_venta'] ?? 0,
+                    'porcentaje_iva' => $item['porcentaje_iva'] ?? 0,
                     'precio_unitario' => $item['precio_unitario'],
                     'observaciones' => $item['observaciones'] ?? null,
                 ]);

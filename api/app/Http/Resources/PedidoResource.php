@@ -17,6 +17,9 @@ class PedidoResource extends JsonResource
         return [
             'id' => $this->id,
             'cliente_id' => $this->cliente_id,
+            'cliente_nombre' => $this->whenLoaded('cliente', function() {
+                return $this->cliente->nombre . ' ' . $this->cliente->apellido;
+            }),
             'cliente' => $this->whenLoaded('cliente', function() {
                 return [
                     'id' => $this->cliente->id,

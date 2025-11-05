@@ -26,9 +26,12 @@ const venta = ref({
   pagos: [], // Array de pagos
   observaciones: '',
   pedido_id: null, // Para vincular con pedido si viene de uno
+  requiere_factura: false, // ← NUEVO: Decisión manual en cada venta
 })
 
 const productoSeleccionado = ref(null)
+const busquedaProducto = ref('')
+const mostrarResultadosProducto = ref(false)
 const cantidadProducto = ref(1)
 const precioProducto = ref(0)
 const pedidosPendientes = ref([])
@@ -58,7 +61,9 @@ const totalPagos = computed(() => {
 })
 
 const saldoPendiente = computed(() => {
-  return Math.max(0, totalCalculado.value - totalPagos.value)
+  const saldo = totalCalculado.value - totalPagos.value
+  // Redondear a 2 decimales para evitar problemas de precisión
+  return Math.max(0, Math.round(saldo * 100) / 100)
 })
 
 const clienteSeleccionado = computed(() => {
@@ -76,8 +81,23 @@ const creditoDisponible = computed(() => {
   return Math.max(0, limite - saldo)
 })
 
-const requiereFactura = computed(() => {
-  return clienteSeleccionado.value && (clienteSeleccionado.value.requiere_factura ?? true)
+// Ya no es computed, ahora se controla manualmente en cada venta
+// const requiereFactura = computed(() => {
+//   return clienteSeleccionado.value && (clienteSeleccionado.value.requiere_factura ?? true)
+// })
+
+const productosFiltrados = computed(() => {
+  if (!busquedaProducto.value || busquedaProducto.value.trim() === '') {
+    return [] // No mostrar nada si no hay búsqueda
+  }
+  
+  const termino = busquedaProducto.value.toLowerCase().trim()
+  
+  return productos.value.filter(producto => {
+    const nombre = (producto.nombre || '').toLowerCase()
+    const codigo = (producto.codigo || '').toLowerCase()
+    return nombre.includes(termino) || codigo.includes(termino)
+  }).slice(0, 10) // Limitar a 10 resultados
 })
 
 // Methods
@@ -171,6 +191,19 @@ const usarPedido = (pedido) => {
   toast.info('Productos del pedido agregados')
 }
 
+const seleccionarProducto = (producto) => {
+  productoSeleccionado.value = producto.id
+  busquedaProducto.value = `${producto.nombre} (${producto.codigo})`
+  precioProducto.value = producto.precio || 0
+  mostrarResultadosProducto.value = false
+  
+  // Focus en el campo de cantidad después de seleccionar
+  setTimeout(() => {
+    const cantidadInput = document.querySelector('input[type="number"]')
+    if (cantidadInput) cantidadInput.focus()
+  }, 100)
+}
+
 const agregarProducto = () => {
   if (!productoSeleccionado.value) {
     toast.warning('Debe seleccionar un producto')
@@ -202,8 +235,10 @@ const agregarProducto = () => {
 
   // Limpiar selección
   productoSeleccionado.value = null
+  busquedaProducto.value = ''
   cantidadProducto.value = 1
   precioProducto.value = 0
+  mostrarResultadosProducto.value = false
 }
 
 const eliminarProducto = (index) => {
@@ -292,8 +327,8 @@ const guardarVenta = async () => {
     return
   }
 
-  // Validar facturación si el cliente lo requiere
-  if (requiereFactura.value) {
+  // Validar facturación si se requiere
+  if (venta.value.requiere_factura) {
     if (!venta.value.tipo_comprobante) {
       toast.warning('Debe especificar el tipo de comprobante')
       return
@@ -302,14 +337,19 @@ const guardarVenta = async () => {
   }
 
   // Validar pagos según si tiene cuenta corriente
-  if (!tieneCuentaCorriente.value && saldoPendiente.value > 0) {
+  // Tolerancia de 0.01 para evitar errores de redondeo
+  const tolerancia = 0.01
+  if (!tieneCuentaCorriente.value && saldoPendiente.value > tolerancia) {
     toast.warning('El cliente no tiene cuenta corriente. Debe pagar el total de la venta.')
     return
   }
 
-  if (saldoPendiente.value > creditoDisponible.value && tieneCuentaCorriente.value) {
-    toast.warning(`El saldo pendiente (${formatPrice(saldoPendiente.value)}) supera el crédito disponible (${formatPrice(creditoDisponible.value)})`)
-    return
+  // Solo validar límite de crédito si efectivamente queda saldo pendiente
+  if (tieneCuentaCorriente.value && saldoPendiente.value > tolerancia) {
+    if (saldoPendiente.value > creditoDisponible.value) {
+      toast.warning(`El saldo pendiente (${formatPrice(saldoPendiente.value)}) supera el crédito disponible (${formatPrice(creditoDisponible.value)})`)
+      return
+    }
   }
 
   try {
@@ -583,32 +623,63 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
 
           <!-- Agregar Productos -->
           <VCol cols="12">
-            <VCard variant="outlined" class="mb-3">
+            <VCard variant="outlined" class="mb-6" style="position: relative; z-index: 100;">
               <VCardTitle class="text-body-1 pa-3 bg-primary">
                 <VIcon class="mr-2" size="18">ri-add-box-line</VIcon>
                 Agregar Productos
               </VCardTitle>
-              <VCardText class="pa-3">
-                <VRow>
-                  <VCol cols="12" md="5">
-                    <VSelect
-                      v-model="productoSeleccionado"
-                      :items="productos"
-                      item-title="nombre"
-                      item-value="id"
-                      label="Producto"
-                      @update:model-value="onProductoChange"
-                      prepend-inner-icon="ri-product-hunt-line"
-                      density="compact"
-                      variant="outlined"
-                    >
-                      <template #item="{ props, item }">
-                        <VListItem
-                          v-bind="props"
-                          :subtitle="`${item.raw.codigo} | ${formatPrice(item.raw.precio)}`"
-                        />
-                      </template>
-                    </VSelect>
+              <VCardText class="pa-3 pb-6" style="overflow: visible; min-height: 400px;">
+                <VRow style="overflow: visible;">
+                  <VCol cols="12" md="5" style="position: relative; overflow: visible;">
+                    <div style="position: relative;">
+                      <!-- Campo de búsqueda con autocompletado predictivo -->
+                        <VTextField
+                          v-model="busquedaProducto"
+                          label="Buscar producto por nombre o código"
+                          prepend-inner-icon="ri-search-line"
+                          density="compact"
+                          variant="outlined"
+                          clearable
+                          @input="mostrarResultadosProducto = true"
+                          @blur="setTimeout(() => mostrarResultadosProducto = false, 200)"
+                          @focus="busquedaProducto && (mostrarResultadosProducto = true)"
+                          @click:clear="productoSeleccionado = null; precioProducto = 0; mostrarResultadosProducto = false; busquedaProducto = ''"
+                        />                      <!-- Dropdown de resultados predictivos -->
+                      <VCard
+                        v-if="mostrarResultadosProducto && busquedaProducto && busquedaProducto.trim().length > 0 && productosFiltrados.length > 0"
+                        class="position-absolute"
+                        style="top: 100%; left: 0; right: 0; z-index: 9999; max-height: 300px; overflow-y: auto; width: 100%;"
+                        elevation="3"
+                      >
+                        <VList density="compact">
+                          <VListItem
+                            v-for="producto in productosFiltrados"
+                            :key="producto.id"
+                            @click="seleccionarProducto(producto)"
+                            class="cursor-pointer"
+                            :active="productoSeleccionado === producto.id"
+                          >
+                            <VListItemTitle>{{ producto.nombre }}</VListItemTitle>
+                            <VListItemSubtitle>
+                              Código: {{ producto.codigo }} | Precio: {{ formatPrice(producto.precio) }}
+                            </VListItemSubtitle>
+                          </VListItem>
+                        </VList>
+                      </VCard>
+                      
+                      <!-- Mensaje si no hay resultados -->
+                      <VCard
+                        v-if="mostrarResultadosProducto && busquedaProducto && busquedaProducto.length > 2 && productosFiltrados.length === 0"
+                        class="position-absolute"
+                        style="top: 100%; left: 0; right: 0; z-index: 9999; width: 100%;"
+                        elevation="3"
+                      >
+                        <VCardText class="text-center text-grey pa-3">
+                          <VIcon>ri-search-line</VIcon>
+                          No se encontraron productos
+                        </VCardText>
+                      </VCard>
+                    </div>
                   </VCol>
                   <VCol cols="12" md="2">
                     <VTextField
@@ -638,6 +709,7 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
                       block
                       color="primary"
                       @click="agregarProducto"
+                      :disabled="!productoSeleccionado"
                     >
                       <VIcon size="18">ri-add-line</VIcon>
                       Agregar
@@ -756,17 +828,20 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
               <VIcon class="mr-2" size="18">ri-information-line</VIcon>
               Información del Cliente
             </div>
-            <VChip
-              v-if="requiereFactura"
-              color="primary"
-              size="small"
-              prepend-icon="ri-file-list-3-line"
-            >
-              Requiere Factura
-            </VChip>
           </VCardTitle>
           <VCardText class="pa-3 pt-1">
             <VRow dense>
+              <!-- Checkbox para decidir si requiere factura -->
+              <VCol cols="12">
+                <VCheckbox
+                  v-model="venta.requiere_factura"
+                  label="Esta venta requiere factura"
+                  color="primary"
+                  density="compact"
+                  hide-details
+                />
+              </VCol>
+              
               <VCol v-if="tieneCuentaCorriente" cols="12" sm="6" md="4">
                 <div class="text-caption text-medium-emphasis">Cuenta Corriente</div>
                 <div class="text-body-2 font-weight-medium">
@@ -793,8 +868,8 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
           </VCardText>
         </VCard>
 
-        <!-- Facturación (solo si el cliente requiere factura) -->
-        <VCard v-if="requiereFactura" variant="outlined" class="mb-3">
+        <!-- Facturación (solo si se marca como requiere factura) -->
+        <VCard v-if="venta.requiere_factura" variant="outlined" class="mb-3">
           <VCardTitle class="text-body-1 pa-3 pb-2 bg-surface-variant">
             <VIcon class="mr-2" size="18">ri-file-text-line</VIcon>
             Datos de Facturación
@@ -1073,7 +1148,7 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
               </VAlert>
               
               <VAlert
-                v-if="saldoPendiente > 0 && !tieneCuentaCorriente"
+                v-if="saldoPendiente > 0.01 && !tieneCuentaCorriente"
                 type="warning"
                 variant="tonal"
                 density="comfortable"
@@ -1087,7 +1162,7 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
               </VAlert>
 
               <VAlert
-                v-if="saldoPendiente === 0 && venta.pagos.length > 0"
+                v-if="saldoPendiente <= 0.01 && venta.pagos.length > 0"
                 type="success"
                 variant="tonal"
                 density="comfortable"
@@ -1147,6 +1222,23 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
 .bg-warning {
   background-color: rgb(var(--v-theme-warning));
   color: white;
+}
+
+/* Estilos para búsqueda de productos */
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.position-relative {
+  position: relative;
+}
+
+.position-absolute {
+  position: absolute;
+}
+
+.w-100 {
+  width: 100%;
 }
 
 /* Responsividad mejorada */

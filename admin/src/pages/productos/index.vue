@@ -61,8 +61,11 @@ const headers = [
   { title: 'Código', key: 'codigo' },
   { title: 'Nombre', key: 'nombre' },
   { title: 'Unidad', key: 'unidad_medida' },
-  { title: 'Precio', key: 'precio' },
+  { title: 'P. Compra', key: 'precio_compra' },
+  { title: 'P. Venta', key: 'precio_venta' },
+  { title: 'P. Unitario', key: 'precio' },
   { title: 'IVA %', key: 'iva' },
+  { title: 'P. Total (c/IVA)', key: 'precio_total' },
   { title: 'Estado', key: 'estado' },
   { title: 'Acciones', key: 'actions', sortable: false },
 ]
@@ -204,8 +207,19 @@ onMounted(async () => {
           no-data-text="No hay productos registrados"
           class="elevation-1"
         >
+          <template #item.precio_compra="{ item }">
+            {{ item.precio_compra != null && item.precio_compra > 0 ? formatPrice(item.precio_compra) : '-' }}
+          </template>
+          <template #item.precio_venta="{ item }">
+            {{ item.precio_venta != null && item.precio_venta > 0 ? formatPrice(item.precio_venta) : '-' }}
+          </template>
           <template #item.precio="{ item }">
             {{ formatPrice(item.precio) }}
+          </template>
+          <template #item.precio_total="{ item }">
+            <span class="text-success font-weight-bold">
+              {{ formatPrice(item.precio_total) }}
+            </span>
           </template>
           <template #item.estado="{ item }">
             <VChip :color="item.estado === 'activo' ? 'success' : 'error'" size="small">
@@ -278,6 +292,24 @@ onMounted(async () => {
                   item-value="id"
                   label="Proveedor"
                   clearable
+                />
+              </VCol>
+              <VCol cols="12" md="4">
+                <VTextField
+                  v-model.number="editedItem.precio_compra"
+                  label="Precio Compra*"
+                  type="number"
+                  step="0.01"
+                  required
+                />
+              </VCol>
+              <VCol cols="12" md="4">
+                <VTextField
+                  v-model.number="editedItem.precio_venta"
+                  label="Precio Venta*"
+                  type="number"
+                  step="0.01"
+                  required
                 />
               </VCol>
               <VCol cols="12" md="4">

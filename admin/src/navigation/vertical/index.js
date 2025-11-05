@@ -10,37 +10,7 @@ export default [
     icon: { icon: 'ri-dashboard-line' },
   },
 
-  {
-    title: 'Clientes',
-    icon: { icon: 'ri-group-line' },
-    children: [
-      {
-        title: 'Lista de Clientes',
-        to: '/clientes',
-        icon: { icon: 'ri-group-line' },
-      },
-      {
-        title: 'Cuentas Corrientes',
-        to: '/clientes/cuentas-corrientes',
-        icon: { icon: 'ri-file-list-2-line' },
-      },
-    ],
-  },
-  {
-    title: 'Proveedores',
-    to: '/proveedores',
-    icon: { icon: 'ri-contacts-line' },
-  },
-  {
-    title: 'Productos',
-    to: '/productos',
-    icon: { icon: 'ri-tree-line' },
-  },
-  {
-    title: 'Pedidos',
-    to: '/pedidos',
-    icon: { icon: 'ri-shopping-cart-line' },
-  },
+  // === OPERACIONES PRINCIPALES (Flujo de negocio) ===
   {
     title: 'Ventas',
     icon: { icon: 'ri-funds-line' },
@@ -57,6 +27,43 @@ export default [
       },
     ],
   },
+  {
+    title: 'Pedidos',
+    to: '/pedidos',
+    icon: { icon: 'ri-shopping-cart-line' },
+  },
+
+  // === GESTIÓN DE RELACIONES ===
+  {
+    title: 'Clientes',
+    icon: { icon: 'ri-group-line' },
+    children: [
+      {
+        title: 'Lista de Clientes',
+        to: '/clientes',
+        icon: { icon: 'ri-group-line' },
+      },
+      {
+        title: 'Cuentas Corrientes',
+        to: '/clientes/cuentas-corrientes',
+        icon: { icon: 'ri-file-list-2-line' },
+      },
+    ],
+  },
+
+  // === CATÁLOGO Y RECURSOS ===
+  {
+    title: 'Productos',
+    to: '/productos',
+    icon: { icon: 'ri-tree-line' },
+  },
+  {
+    title: 'Proveedores',
+    to: '/proveedores',
+    icon: { icon: 'ri-contacts-line' },
+  },
+
+  // === ANÁLISIS Y REPORTES ===
   {
     title: 'Reportes',
     to: '/reportes',

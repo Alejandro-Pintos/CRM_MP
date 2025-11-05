@@ -22,6 +22,8 @@ class UpdateProductoRequest extends FormRequest
             'nombre'          => ['sometimes', 'required', 'string', 'max:150'],
             'descripcion'     => ['sometimes', 'nullable', 'string', 'max:255'],
             'unidad_medida'   => ['sometimes', 'required', 'string', 'max:50'],
+            'precio_compra'   => ['sometimes', 'required', 'numeric', 'min:0'],
+            'precio_venta'    => ['sometimes', 'required', 'numeric', 'min:0'],
             'precio'          => ['sometimes', 'required', 'numeric', 'min:0'],
             'iva'             => ['sometimes', 'required', 'numeric', 'min:0', 'max:100'],
             'estado'          => ['sometimes',  'required', 'in:activo,inactivo'],

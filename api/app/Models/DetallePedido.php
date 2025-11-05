@@ -13,12 +13,18 @@ class DetallePedido extends Model
         'pedido_id',
         'producto_id',
         'cantidad',
+        'precio_compra',
+        'precio_venta',
+        'porcentaje_iva',
         'precio_unitario',
         'observaciones',
     ];
 
     protected $casts = [
         'cantidad' => 'decimal:2',
+        'precio_compra' => 'decimal:2',
+        'precio_venta' => 'decimal:2',
+        'porcentaje_iva' => 'decimal:2',
         'precio_unitario' => 'decimal:2',
     ];
 

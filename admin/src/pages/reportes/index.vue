@@ -66,10 +66,10 @@ const fetchReportes = async () => {
   loading.value = true
   error.value = ''
   try {
-    // Construir parámetros de período si están definidos
+    // Construir parámetros de período con los nombres correctos que espera el backend
     const params = {}
-    if (fechaDesde.value) params.fecha_desde = fechaDesde.value
-    if (fechaHasta.value) params.fecha_hasta = fechaHasta.value
+    if (fechaDesde.value) params.from = fechaDesde.value
+    if (fechaHasta.value) params.to = fechaHasta.value
     
     const [clientes, productos, proveedores, ventas] = await Promise.all([
       getReporteClientes(params),
@@ -92,10 +92,10 @@ const fetchReportes = async () => {
 
 const exportar = (tipo, formato) => {
   try {
-    // Construir parámetros de período
+    // Construir parámetros de período con los nombres correctos
     const params = {}
-    if (fechaDesde.value) params.fecha_desde = fechaDesde.value
-    if (fechaHasta.value) params.fecha_hasta = fechaHasta.value
+    if (fechaDesde.value) params.from = fechaDesde.value
+    if (fechaHasta.value) params.to = fechaHasta.value
     
     const exportFunctions = {
       clientes: {

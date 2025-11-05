@@ -18,6 +18,8 @@ class StoreProductoRequest extends FormRequest
             'nombre' => 'required|string|max:150',
             'descripcion' => 'nullable|string|max:255',
             'unidad_medida' => 'required|string|max:50',
+            'precio_compra' => 'required|numeric|min:0',
+            'precio_venta' => 'required|numeric|min:0',
             'precio' => 'required|numeric|min:0',
             'iva' => 'required|numeric|min:0|max:100',
             'estado' => 'required|in:activo,inactivo',

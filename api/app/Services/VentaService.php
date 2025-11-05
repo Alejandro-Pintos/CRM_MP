@@ -50,10 +50,19 @@ class VentaService
             // 4) Calcular saldo pendiente (lo que queda a deber)
             $saldoPendiente = round($total - $totalPagos, 2);
 
+            // DEBUG temporal
+            \Log::info('Total calculado:', ['total' => $total]);
+            \Log::info('Total pagos:', ['totalPagos' => $totalPagos]);
+            \Log::info('Saldo pendiente:', ['saldoPendiente' => $saldoPendiente]);
+            \Log::info('Cliente:', ['id' => $cliente->id, 'limite_credito' => $cliente->limite_credito]);
+
             // 5) Si el cliente tiene cuenta corriente, validar límite de crédito
             $tieneCuentaCorriente = (float)$cliente->limite_credito > 0;
             
-            if ($saldoPendiente > 0) {
+            // Tolerancia de 0.01 para evitar errores de redondeo (1 centavo)
+            $tolerancia = 0.01;
+            
+            if ($saldoPendiente > $tolerancia) {
                 if ($tieneCuentaCorriente) {
                     // Validar límite de crédito solo si queda saldo pendiente
                     $credito_disponible = (float)$cliente->limite_credito - (float)$cliente->saldo_actual;
@@ -85,10 +94,10 @@ class VentaService
             $venta->numero_comprobante = $numeroComprobante;
             $venta->total = $total;
             
-            // Determinar estado de pago
-            if ($totalPagos >= $total) {
+            // Determinar estado de pago (con tolerancia de 1 centavo)
+            if ($saldoPendiente <= $tolerancia) {
                 $venta->estado_pago = 'pagado';
-            } elseif ($totalPagos > 0) {
+            } elseif ($totalPagos > $tolerancia) {
                 $venta->estado_pago = 'parcial';
             } else {
                 $venta->estado_pago = 'pendiente';
@@ -117,7 +126,9 @@ class VentaService
                 ]);
             }
 
-            // 8) Procesar pagos
+            // 8) Procesar pagos (NO crear movimientos de cuenta corriente aquí)
+            // Los pagos en el momento de la venta NO afectan la cuenta corriente
+            // porque el cliente nunca tuvo esa deuda
             if (isset($payload['pagos']) && is_array($payload['pagos'])) {
                 foreach ($payload['pagos'] as $pagoData) {
                     Pago::create([
@@ -130,35 +141,22 @@ class VentaService
             }
 
             // 9) Actualizar saldo del cliente SOLO con lo que queda pendiente
-            if ($saldoPendiente > 0) {
+            // y crear UN SOLO movimiento de venta por el saldo pendiente
+            if ($saldoPendiente > $tolerancia) {
                 $cliente->saldo_actual = round((float)$cliente->saldo_actual + $saldoPendiente, 2);
                 $cliente->save();
 
-                // 9.1) Crear movimiento en cuenta corriente (DEBE = aumenta deuda)
+                // 9.1) Crear movimiento de venta (DEBE = aumenta deuda) solo si tiene cuenta corriente
                 if ($tieneCuentaCorriente) {
                     MovimientoCuentaCorriente::create([
                         'cliente_id' => $cliente->id,
-                        'tipo' => 'debe',
-                        'descripcion' => "Venta #{$venta->id}" . ($venta->numero_comprobante ? " - {$venta->tipo_comprobante} {$venta->numero_comprobante}" : ''),
-                        'debe' => $saldoPendiente,
-                        'haber' => 0,
-                        'saldo' => $cliente->saldo_actual,
+                        'tipo' => 'venta',
+                        'referencia_id' => $venta->id,
+                        'monto' => abs($saldoPendiente), // Positivo = aumenta deuda
                         'fecha' => $venta->fecha,
+                        'descripcion' => "Saldo pendiente venta #{$venta->id}" . ($venta->numero_comprobante ? " - {$venta->tipo_comprobante} {$venta->numero_comprobante}" : ''),
                     ]);
                 }
-            }
-
-            // 10) Si hubo pagos, registrar movimientos (HABER = reduce deuda)
-            if ($totalPagos > 0 && $tieneCuentaCorriente) {
-                MovimientoCuentaCorriente::create([
-                    'cliente_id' => $cliente->id,
-                    'tipo' => 'haber',
-                    'descripcion' => "Pago venta #{$venta->id}",
-                    'debe' => 0,
-                    'haber' => $totalPagos,
-                    'saldo' => $cliente->saldo_actual,
-                    'fecha' => $venta->fecha,
-                ]);
             }
 
             // 11) Devolver la venta con sus relaciones cargadas

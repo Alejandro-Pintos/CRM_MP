@@ -20,9 +20,12 @@ class ProductoResource extends JsonResource
             'nombre' => $this->nombre,
             'descripcion' => $this->descripcion,
             'unidad_medida' => $this->unidad_medida,
+            'precio_compra' => (float) $this->precio_compra,
+            'precio_venta' => (float) $this->precio_venta,
             'precio' => (float) $this->precio,
+            'precio_total' => $this->precio_total, // Calculado dinámicamente
             'iva' => (float) $this->iva,
-            'precio_con_iva' => (float) $this->precio_con_iva, // accesor en el modelo
+            'precio_con_iva' => (float) $this->precio_con_iva, // Legacy - mantener compatibilidad
             'estado' => $this->estado,
             'proveedor_id' => $this->proveedor_id,
 

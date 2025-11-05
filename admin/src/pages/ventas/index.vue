@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { getVentas, deleteVenta, getPagosVenta, createPagoVenta } from '@/services/ventas'
 import { getMetodosPago } from '@/services/metodosPago'
 import { toast } from '@/plugins/toast'
@@ -12,11 +12,28 @@ const dialogDelete = ref(false)
 const dialogPagos = ref(false)
 const selectedVenta = ref(null)
 const pagosVenta = ref([])
+const search = ref('')
 
 const nuevoPago = ref({
   metodo_pago_id: null,
   monto: 0,
   fecha_pago: new Date().toISOString().split('T')[0],
+})
+
+// Filtrar ventas por búsqueda
+const ventasFiltradas = computed(() => {
+  if (!search.value) return ventas.value
+  
+  const searchLower = search.value.toLowerCase()
+  return ventas.value.filter(venta => {
+    const cliente = (venta.cliente_nombre || '').toLowerCase()
+    const id = String(venta.id || '')
+    const comprobante = (venta.numero_comprobante || '').toLowerCase()
+    
+    return cliente.includes(searchLower) ||
+           id.includes(searchLower) ||
+           comprobante.includes(searchLower)
+  })
 })
 
 const headers = [
@@ -157,8 +174,18 @@ onMounted(async () => {
   <div class="pa-6">
     <VCard>
       <VCardTitle>
-        <div class="d-flex justify-space-between align-center">
+        <div class="d-flex justify-space-between align-center flex-wrap ga-2">
           <span class="text-h5">Historial de Ventas</span>
+          <VTextField
+            v-model="search"
+            prepend-inner-icon="mdi-magnify"
+            label="Buscar por cliente, ID o comprobante"
+            single-line
+            hide-details
+            density="compact"
+            style="min-width: 300px;"
+            clearable
+          />
         </div>
       </VCardTitle>
 
@@ -169,14 +196,14 @@ onMounted(async () => {
 
         <VDataTable
           :headers="headers"
-          :items="ventas"
+          :items="ventasFiltradas"
           :loading="loading"
           loading-text="Cargando ventas..."
           no-data-text="No hay ventas registradas"
           class="elevation-1"
         >
           <template #item.cliente_nombre="{ item }">
-            {{ item.cliente ? `${item.cliente.nombre} ${item.cliente.apellido}` : 'N/A' }}
+            {{ item.cliente_nombre || 'N/A' }}
           </template>
           <template #item.total="{ item }">
             {{ formatPrice(item.total) }}

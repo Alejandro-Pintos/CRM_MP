@@ -11,5 +11,10 @@ class MovimientoCuentaCorriente extends Model
     protected $table = 'movimientos_cuenta_corriente';
     protected $fillable = ['cliente_id','tipo','referencia_id','monto','fecha','descripcion'];
 
+    protected $casts = [
+        'fecha' => 'datetime',
+        'monto' => 'decimal:2',
+    ];
+
     public function cliente() { return $this->belongsTo(Cliente::class, 'cliente_id'); }
 }

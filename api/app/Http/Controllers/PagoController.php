@@ -18,7 +18,7 @@ class PagoController extends Controller
     public function index(Venta $venta)
     {
         return PagoResource::collection(
-            $venta->pagos()->orderByDesc('fecha_pago')->get()
+            $venta->pagos()->with('metodoPago')->orderByDesc('fecha_pago')->get()
         );
     }
 

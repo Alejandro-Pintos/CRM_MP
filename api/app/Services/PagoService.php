@@ -55,15 +55,17 @@ class PagoService
             $cliente->saldo_actual = round((float)$cliente->saldo_actual - $monto, 2);
             $cliente->save();
 
-            // Movimiento de cuenta corriente (pago = monto negativo)
-            MovimientoCuentaCorriente::create([
-                'cliente_id'   => $cliente->id,
-                'tipo'         => 'pago',
-                'referencia_id'=> $pago->id,
-                'monto'        => -$monto,
-                'fecha'        => $pago->fecha_pago,
-                'descripcion'  => 'Pago venta #'.$venta->id,
-            ]);
+            // Crear movimiento de cuenta corriente (pago = monto negativo, reduce deuda)
+            if ((float)$cliente->limite_credito > 0) {
+                MovimientoCuentaCorriente::create([
+                    'cliente_id'   => $cliente->id,
+                    'tipo'         => 'pago',
+                    'referencia_id'=> $pago->id,
+                    'monto'        => -abs($monto), // Negativo = reduce deuda
+                    'fecha'        => $pago->fecha_pago,
+                    'descripcion'  => 'Pago venta #'.$venta->id,
+                ]);
+            }
 
             return $pago;
         });

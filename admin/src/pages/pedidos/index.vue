@@ -245,13 +245,13 @@ const seleccionarProducto = (item, producto, index) => {
   // Asignar el producto seleccionado
   item.producto_id = producto.id
   
-  // Asignar precios de compra y venta
-  item.precio_compra = producto.precio_compra
-  item.precio_venta = producto.precio_venta
-  item.porcentaje_iva = producto.porcentaje_iva
+  // Asignar precios del producto
+  item.precio_compra = parseFloat(producto.precio_compra || 0)
+  item.precio_venta = parseFloat(producto.precio_venta || 0)
+  item.porcentaje_iva = parseFloat(producto.porcentaje_iva || 0)
   
-  // Actualizar precios
-  actualizarPrecio(item)
+  // El precio unitario es el precio de venta (lo que se cobra al cliente)
+  item.precio_unitario = item.precio_venta
   
   // Actualizar campo de búsqueda con el nombre del producto
   busquedaProductos.value[index] = `${producto.codigo} - ${producto.nombre}`
@@ -261,27 +261,30 @@ const seleccionarProducto = (item, producto, index) => {
 }
 
 const actualizarPrecio = (item) => {
-  const producto = productos.value.find(p => p.id === item.producto_id)
-  if (producto) {
-    // No modificar precio_unitario automáticamente, solo calcular el total
-    item.producto_precio_compra = producto.precio_compra
-    item.producto_precio_venta = producto.precio_venta
-    item.producto_porcentaje_iva = producto.porcentaje_iva
+  // Si se modifica manualmente el precio de venta, actualizar el precio unitario
+  if (item.precio_venta) {
+    item.precio_unitario = parseFloat(item.precio_venta)
   }
 }
 
-// Calcular total del producto (precio_compra + precio_venta + IVA)
+// Calcular total del producto (cantidad × precio_venta)
 const calcularTotalProducto = (item) => {
-  // Usar los valores del item si están disponibles
-  const precioCompra = parseFloat(item.precio_compra || 0)
+  const cantidad = parseFloat(item.cantidad || 0)
+  const precioVenta = parseFloat(item.precio_venta || 0)
+  
+  // El total es simplemente cantidad × precio de venta (que ya incluye ganancia + IVA)
+  return cantidad * precioVenta
+}
+
+// Calcular subtotal sin IVA (para información)
+const calcularSubtotalSinIVA = (item) => {
   const precioVenta = parseFloat(item.precio_venta || 0)
   const porcentajeIva = parseFloat(item.porcentaje_iva || 0)
   
-  // Calcular IVA sobre precio de venta
-  const montoIva = precioVenta * (porcentajeIva / 100)
+  // Calcular el precio sin IVA
+  const precioSinIVA = precioVenta / (1 + porcentajeIva / 100)
   
-  // Total = precio_compra + precio_venta + IVA
-  return precioCompra + precioVenta + montoIva
+  return precioSinIVA
 }
 
 const totalPedido = computed(() => {
@@ -950,8 +953,10 @@ onMounted(() => {
                             step="0.01"
                             prefix="$"
                             density="compact"
-                            :readonly="!!item.producto_id"
-                            :bg-color="item.producto_id ? 'grey-lighten-4' : 'white'"
+                            readonly
+                            hint="Costo proveedor"
+                            persistent-hint
+                            bg-color="grey-lighten-4"
                           />
                         </VCol>
                         <VCol cols="6" md="2">
@@ -963,41 +968,23 @@ onMounted(() => {
                             step="0.01"
                             prefix="$"
                             density="compact"
-                            :readonly="!!item.producto_id"
-                            :bg-color="item.producto_id ? 'grey-lighten-4' : 'white'"
+                            hint="Incluye ganancia+IVA"
+                            persistent-hint
+                            @input="item.precio_unitario = item.precio_venta"
                           />
                         </VCol>
                         <VCol cols="6" md="2">
                           <VTextField
                             v-model.number="item.precio_unitario"
-                            label="Precio Unit."
+                            label="P. Venta"
                             type="number"
                             min="0"
                             step="0.01"
                             prefix="$"
                             density="compact"
-                          />
-                        </VCol>
-                        <VCol cols="6" md="3">
-                          <VTextField
-                            :model-value="formatPrice(calcularTotalProducto(item))"
-                            label="Total Producto"
-                            readonly
-                            density="compact"
-                            hint="Compra+Venta+IVA"
+                            hint="Precio final al cliente"
                             persistent-hint
-                            bg-color="success-lighten-5"
-                          />
-                        </VCol>
-                        <VCol cols="6" md="2">
-                          <VTextField
-                            :model-value="formatPrice(calcularTotalProducto(item))"
-                            label="Total Producto"
-                            readonly
-                            density="compact"
-                            hint="Compra+Venta+IVA"
-                            persistent-hint
-                            bg-color="success-lighten-5"
+                            @input="item.precio_venta = item.precio_unitario"
                           />
                         </VCol>
                         <VCol cols="6" md="2">
@@ -1006,6 +993,7 @@ onMounted(() => {
                             label="Subtotal"
                             readonly
                             density="compact"
+                            bg-color="success-lighten-5"
                           />
                         </VCol>
                         <VCol cols="12" md="1" class="d-flex align-center justify-center">
@@ -1030,10 +1018,10 @@ onMounted(() => {
                       <VCol cols="12" md="6">
                         <div class="text-caption text-medium-emphasis mb-1">
                           <VIcon size="small" class="mr-1">mdi-information-outline</VIcon>
-                          El "Total Producto" muestra: Compra + Venta + IVA
+                          Precio Compra: Costo del proveedor
                         </div>
                         <div class="text-caption text-medium-emphasis">
-                          El "Subtotal" se calcula con el Precio Unit. ingresado
+                          Precio Venta: Precio final al cliente (incluye ganancia + IVA)
                         </div>
                       </VCol>
                       <VCol cols="12" md="6" class="text-right">

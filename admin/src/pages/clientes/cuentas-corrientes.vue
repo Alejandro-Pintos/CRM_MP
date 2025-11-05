@@ -46,10 +46,11 @@ const headers = [
 
 const headersCuentaCorriente = [
   { title: 'Fecha', key: 'fecha' },
+  { title: 'Tipo', key: 'tipo' },
   { title: 'Descripción', key: 'descripcion' },
   { title: 'Debe', key: 'debe' },
   { title: 'Haber', key: 'haber' },
-  { title: 'Saldo', key: 'saldo' },
+  { title: 'Saldo Movimiento', key: 'monto' },
 ]
 
 const fetchClientes = async () => {
@@ -107,6 +108,38 @@ const getSaldoColor = (saldo) => {
   if (saldo === 0) return 'success'
   return 'warning'
 }
+
+const getTipoColor = (tipo) => {
+  const colors = {
+    'venta': 'error',
+    'pago': 'success',
+    'ajuste': 'info',
+    'nota_credito': 'warning'
+  }
+  return colors[tipo] || 'secondary'
+}
+
+const getTipoLabel = (tipo) => {
+  const labels = {
+    'venta': 'Venta',
+    'pago': 'Pago',
+    'ajuste': 'Ajuste',
+    'nota_credito': 'Nota de Crédito'
+  }
+  return labels[tipo] || tipo
+}
+
+// Computed para calcular saldo acumulado
+const movimientosConSaldo = computed(() => {
+  let saldoAcumulado = 0
+  return cuentaCorriente.value.map(movimiento => {
+    saldoAcumulado += parseFloat(movimiento.monto || 0)
+    return {
+      ...movimiento,
+      saldo_acumulado: saldoAcumulado
+    }
+  })
+})
 
 onMounted(fetchClientes)
 </script>
@@ -226,26 +259,48 @@ onMounted(fetchClientes)
 
           <VDataTable
             :headers="headersCuentaCorriente"
-            :items="cuentaCorriente"
-            :items-per-page="10"
+            :items="movimientosConSaldo"
+            :items-per-page="15"
             no-data-text="No hay movimientos registrados"
             class="elevation-1"
+            density="compact"
           >
             <template #item.fecha="{ item }">
-              {{ new Date(item.fecha).toLocaleDateString('es-AR') }}
+              {{ new Date(item.fecha).toLocaleDateString('es-AR', { 
+                year: 'numeric', 
+                month: '2-digit', 
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+              }) }}
+            </template>
+
+            <template #item.tipo="{ item }">
+              <VChip :color="getTipoColor(item.tipo)" size="small" variant="tonal">
+                {{ getTipoLabel(item.tipo) }}
+              </VChip>
             </template>
 
             <template #item.debe="{ item }">
-              <span v-if="item.debe" class="text-error">{{ formatPrice(item.debe) }}</span>
+              <span v-if="parseFloat(item.monto) > 0" class="text-error font-weight-bold">
+                {{ formatPrice(Math.abs(item.monto)) }}
+              </span>
+              <span v-else class="text-grey">-</span>
             </template>
 
             <template #item.haber="{ item }">
-              <span v-if="item.haber" class="text-success">{{ formatPrice(item.haber) }}</span>
+              <span v-if="parseFloat(item.monto) < 0" class="text-success font-weight-bold">
+                {{ formatPrice(Math.abs(item.monto)) }}
+              </span>
+              <span v-else class="text-grey">-</span>
             </template>
 
-            <template #item.saldo="{ item }">
-              <VChip :color="getSaldoColor(item.saldo)" size="small">
-                {{ formatPrice(item.saldo) }}
+            <template #item.monto="{ item }">
+              <VChip 
+                :color="parseFloat(item.saldo_acumulado) > 0 ? 'error' : parseFloat(item.saldo_acumulado) < 0 ? 'success' : 'secondary'" 
+                size="small"
+              >
+                {{ formatPrice(item.saldo_acumulado) }}
               </VChip>
             </template>
           </VDataTable>

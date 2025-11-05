@@ -22,6 +22,11 @@ class VentaStoreRequest extends FormRequest
             'items.*.cantidad' => ['required','numeric','gt:0'],
             'items.*.precio_unitario' => ['required','numeric','gte:0'],
             'items.*.iva' => ['nullable','numeric','gte:0'], // % IVA
+
+            'pagos' => ['nullable','array'],
+            'pagos.*.metodo_pago_id' => ['nullable','integer'],
+            'pagos.*.monto' => ['nullable','numeric'],
+            'pagos.*.fecha_pago' => ['nullable','date'],
         ];
     }
 }
