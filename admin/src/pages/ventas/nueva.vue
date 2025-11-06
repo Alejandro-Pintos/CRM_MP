@@ -762,6 +762,8 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
                       prepend-inner-icon="ri-money-dollar-circle-line"
                       density="compact"
                       variant="outlined"
+                      readonly
+                      :disabled="!productoSeleccionado"
                     />
                   </VCol>
                   <VCol cols="12" md="2">

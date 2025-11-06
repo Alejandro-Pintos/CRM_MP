@@ -161,6 +161,22 @@ const verCuentaCorriente = async (item) => {
   }
 }
 
+const abrirWhatsApp = (telefono, nombre, apellido) => {
+  // Limpiar el número de teléfono (quitar espacios, guiones, paréntesis)
+  const numeroLimpio = telefono.replace(/\D/g, '')
+  
+  // Mensaje predeterminado personalizado
+  const mensaje = `Hola ${nombre} ${apellido}, `
+  
+  // Construir URL de WhatsApp Web
+  // Si el número no tiene código de país, asumir Argentina (+54)
+  const numeroCompleto = numeroLimpio.startsWith('54') ? numeroLimpio : `54${numeroLimpio}`
+  const url = `https://wa.me/${numeroCompleto}?text=${encodeURIComponent(mensaje)}`
+  
+  // Abrir en nueva pestaña
+  window.open(url, '_blank')
+}
+
 const close = () => {
   dialog.value = false
   error.value = ''
@@ -250,6 +266,22 @@ onMounted(fetchClientes)
         >
           <template #item.nombre_completo="{ item }">
             {{ item.nombre }} {{ item.apellido }}
+          </template>
+          <template #item.telefono="{ item }">
+            <div class="d-flex align-center ga-2">
+              <span>{{ item.telefono || '-' }}</span>
+              <VBtn
+                v-if="item.telefono"
+                icon
+                size="x-small"
+                color="success"
+                variant="text"
+                @click="abrirWhatsApp(item.telefono, item.nombre, item.apellido)"
+                title="Enviar mensaje por WhatsApp"
+              >
+                <VIcon size="20">ri-whatsapp-line</VIcon>
+              </VBtn>
+            </div>
           </template>
           <template #item.limite_credito="{ item }">
             {{ formatPrice(item.limite_credito ?? 0) }}

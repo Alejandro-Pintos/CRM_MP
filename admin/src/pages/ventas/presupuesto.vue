@@ -351,6 +351,69 @@ const enviarPorEmail = async () => {
   }
 }
 
+const enviarPorWhatsApp = () => {
+  if (!clienteSeleccionado.value) {
+    toast.warning('Debe seleccionar un cliente antes de enviar')
+    return
+  }
+  
+  if (!clienteSeleccionado.value.telefono) {
+    toast.error('El cliente seleccionado no tiene un teléfono registrado')
+    return
+  }
+  
+  if (presupuesto.value.productos.length === 0) {
+    toast.warning('Debe agregar al menos un producto')
+    return
+  }
+
+  try {
+    // Limpiar el número de teléfono
+    const numeroLimpio = clienteSeleccionado.value.telefono.replace(/\D/g, '')
+    const numeroCompleto = numeroLimpio.startsWith('54') ? numeroLimpio : `54${numeroLimpio}`
+    
+    // Construir el mensaje del presupuesto
+    const nombreCliente = `${clienteSeleccionado.value.nombre} ${clienteSeleccionado.value.apellido}`
+    
+    let mensaje = `Hola ${nombreCliente}! 👋\n\n`
+    mensaje += `Le enviamos su presupuesto:\n\n`
+    mensaje += `📅 Fecha: ${new Date(presupuesto.value.fecha).toLocaleDateString('es-AR')}\n`
+    mensaje += `⏰ Válido hasta: ${new Date(presupuesto.value.fecha_vencimiento).toLocaleDateString('es-AR')}\n\n`
+    mensaje += `📦 *Productos:*\n`
+    
+    // Agregar cada producto
+    presupuesto.value.productos.forEach((item, index) => {
+      const producto = productos.value.find(p => p.id === item.producto_id)
+      const subtotal = item.cantidad * item.precio_unitario
+      mensaje += `${index + 1}. ${producto?.nombre || 'Producto'}\n`
+      mensaje += `   Cantidad: ${item.cantidad} x ${formatPrice(item.precio_unitario)} = ${formatPrice(subtotal)}\n`
+    })
+    
+    mensaje += `\n💰 *TOTAL: ${formatPrice(totalCalculado.value)}*\n\n`
+    
+    if (presupuesto.value.condiciones_pago) {
+      mensaje += `💳 Condiciones de pago: ${presupuesto.value.condiciones_pago}\n`
+    }
+    
+    if (presupuesto.value.observaciones) {
+      mensaje += `\n📝 Observaciones: ${presupuesto.value.observaciones}\n`
+    }
+    
+    mensaje += `\n¿Desea confirmar este presupuesto? Quedamos a su disposición! 😊`
+    
+    // Construir URL de WhatsApp
+    const url = `https://wa.me/${numeroCompleto}?text=${encodeURIComponent(mensaje)}`
+    
+    // Abrir en nueva pestaña
+    window.open(url, '_blank')
+    toast.success('Abriendo WhatsApp...')
+    
+  } catch (error) {
+    console.error('Error al abrir WhatsApp:', error)
+    toast.error('Error al abrir WhatsApp')
+  }
+}
+
 const limpiar = () => {
   presupuesto.value = {
     cliente_id: null,
@@ -615,6 +678,8 @@ onMounted(async () => {
                       prepend-inner-icon="ri-money-dollar-circle-line"
                       density="compact"
                       variant="outlined"
+                      readonly
+                      :disabled="!productoSeleccionado"
                     />
                   </VCol>
                   <VCol cols="12" md="2">
@@ -792,6 +857,17 @@ onMounted(async () => {
                 :disabled="!presupuesto.cliente_id || presupuesto.productos.length === 0"
               >
                 Enviar por Email
+              </VBtn>
+              <VBtn
+                block
+                color="success"
+                variant="outlined"
+                prepend-icon="ri-whatsapp-line"
+                class="mt-2"
+                @click="enviarPorWhatsApp"
+                :disabled="!presupuesto.cliente_id || presupuesto.productos.length === 0 || !clienteSeleccionado?.telefono"
+              >
+                Enviar por WhatsApp
               </VBtn>
             </VCardText>
           </VCard>
