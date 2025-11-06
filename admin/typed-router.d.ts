@@ -32,5 +32,6 @@ declare module 'vue-router/auto-routes' {
     'second-page': RouteRecordInfo<'second-page', '/second-page', Record<never, never>, Record<never, never>>,
     'ventas': RouteRecordInfo<'ventas', '/ventas', Record<never, never>, Record<never, never>>,
     'ventas-nueva': RouteRecordInfo<'ventas-nueva', '/ventas/nueva', Record<never, never>, Record<never, never>>,
+    'ventas-presupuesto': RouteRecordInfo<'ventas-presupuesto', '/ventas/presupuesto', Record<never, never>, Record<never, never>>,
   }
 }

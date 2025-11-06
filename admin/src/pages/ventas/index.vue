@@ -2,7 +2,9 @@
 import { ref, onMounted, computed } from 'vue'
 import { getVentas, deleteVenta, getPagosVenta, createPagoVenta } from '@/services/ventas'
 import { getMetodosPago } from '@/services/metodosPago'
+import { apiFetch } from '@/services/api'
 import { toast } from '@/plugins/toast'
+import NumberInput from '@/components/NumberInput.vue'
 
 const ventas = ref([])
 const metodosPago = ref([])
@@ -18,6 +20,10 @@ const nuevoPago = ref({
   metodo_pago_id: null,
   monto: 0,
   fecha_pago: new Date().toISOString().split('T')[0],
+  // Campos para cheques
+  numero_cheque: '',
+  fecha_cheque: '',
+  observaciones_cheque: '',
 })
 
 // Filtrar ventas por búsqueda
@@ -112,6 +118,20 @@ const verPagos = async (item) => {
 }
 
 const registrarPago = async () => {
+  // Validar que el monto no exceda el saldo pendiente + deuda de cuenta corriente
+  const montoAPagar = parseFloat(nuevoPago.value.monto || 0)
+  const saldoDisponible = saldoDisponibleParaPagar.value
+  
+  if (montoAPagar <= 0) {
+    toast.error('El monto debe ser mayor a cero')
+    return
+  }
+  
+  if (montoAPagar > saldoDisponible) {
+    toast.error(`El monto ($ ${montoAPagar.toLocaleString('es-AR')}) excede el saldo disponible ($ ${saldoDisponible.toLocaleString('es-AR')})`)
+    return
+  }
+  
   try {
     await createPagoVenta(selectedVenta.value.id, nuevoPago.value)
     const data = await getPagosVenta(selectedVenta.value.id)
@@ -120,6 +140,9 @@ const registrarPago = async () => {
       metodo_pago_id: null,
       monto: 0,
       fecha_pago: new Date().toISOString().split('T')[0],
+      numero_cheque: '',
+      fecha_cheque: '',
+      observaciones_cheque: '',
     }
     toast.success('Pago registrado correctamente')
     await fetchVentas()
@@ -127,6 +150,52 @@ const registrarPago = async () => {
     const errorMsg = e.message || 'Error al registrar pago'
     error.value = errorMsg
     toast.error(errorMsg)
+  }
+}
+
+// Marcar cheque como cobrado
+const marcarChequeCobrado = async (pago) => {
+  try {
+    console.log('Marcando cheque como cobrado:', pago.id)
+    const response = await apiFetch(`/api/v1/pagos/${pago.id}/estado-cheque`, {
+      method: 'PATCH',
+      body: {
+        estado_cheque: 'cobrado',
+        fecha_cobro: new Date().toISOString().split('T')[0],
+      },
+    })
+    console.log('Respuesta:', response)
+    
+    // Recargar pagos y ventas
+    const data = await getPagosVenta(selectedVenta.value.id)
+    pagosVenta.value = Array.isArray(data) ? data : (data.data ?? [])
+    toast.success('Cheque marcado como cobrado')
+    await fetchVentas()
+  } catch (e) {
+    console.error('Error completo:', e)
+    toast.error('Error al actualizar el cheque: ' + (e.message || 'Error desconocido'))
+  }
+}
+
+// Marcar cheque como rechazado
+const marcarChequeRechazado = async (pago) => {
+  try {
+    await apiFetch(`/api/v1/pagos/${pago.id}/estado-cheque`, {
+      method: 'PATCH',
+      body: {
+        estado_cheque: 'rechazado',
+        fecha_cobro: new Date().toISOString().split('T')[0],
+        observaciones_cheque: 'Cheque rechazado por el banco',
+      },
+    })
+    
+    // Recargar pagos y ventas
+    const data = await getPagosVenta(selectedVenta.value.id)
+    pagosVenta.value = Array.isArray(data) ? data : (data.data ?? [])
+    toast.error('Cheque marcado como rechazado')
+    await fetchVentas()
+  } catch (e) {
+    toast.error('Error al actualizar el cheque: ' + (e.message || 'Error desconocido'))
   }
 }
 
@@ -144,9 +213,61 @@ const closePagos = () => {
     metodo_pago_id: null,
     monto: 0,
     fecha_pago: new Date().toISOString().split('T')[0],
+    numero_cheque: '',
+    fecha_cheque: '',
+    observaciones_cheque: '',
   }
 }
 
+// Calcular total pagado (solo pagos reales, sin cuenta corriente)
+const totalPagado = computed(() => {
+  return pagosVenta.value
+    .filter(p => p.metodo_pago?.nombre !== 'Cuenta Corriente')
+    .filter(p => !p.estado_cheque || p.estado_cheque === 'cobrado') // Solo cheques cobrados
+    .reduce((sum, p) => sum + parseFloat(p.monto || 0), 0)
+})
+
+// Calcular total cheques pendientes
+const totalChequesPendientes = computed(() => {
+  return pagosVenta.value
+    .filter(p => p.estado_cheque === 'pendiente')
+    .reduce((sum, p) => sum + parseFloat(p.monto || 0), 0)
+})
+
+// Calcular total a cuenta corriente
+const totalCuentaCorriente = computed(() => {
+  return pagosVenta.value
+    .filter(p => p.metodo_pago?.nombre === 'Cuenta Corriente')
+    .reduce((sum, p) => sum + parseFloat(p.monto || 0), 0)
+})
+
+// Calcular saldo actual sin considerar el nuevo pago
+const saldoActual = computed(() => {
+  const total = parseFloat(selectedVenta.value?.total || 0)
+  const pagado = totalPagado.value
+  const cuentaCorriente = totalCuentaCorriente.value
+  const chequesPendientes = totalChequesPendientes.value
+  return total - pagado - cuentaCorriente - chequesPendientes
+})
+
+// Saldo disponible para pagar (incluye deuda de cuenta corriente)
+const saldoDisponibleParaPagar = computed(() => {
+  return saldoActual.value + totalCuentaCorriente.value
+})
+
+// Detectar si el método seleccionado es cheque
+const metodoPagoSeleccionadoEsCheque = computed(() => {
+  if (!nuevoPago.value.metodo_pago_id) return false
+  const metodo = metodosPago.value.find(m => m.id === nuevoPago.value.metodo_pago_id)
+  return metodo && metodo.nombre.toLowerCase() === 'cheque'
+})
+
+// Calcular saldo después de aplicar el nuevo pago (para previsualización)
+const saldoDespuesDelPago = computed(() => {
+  const saldo = saldoActual.value
+  const nuevoMonto = parseFloat(nuevoPago.value.monto || 0)
+  return saldo - nuevoMonto
+})
 const formatPrice = (value) => {
   return new Intl.NumberFormat('es-AR', {
     style: 'currency',
@@ -271,7 +392,91 @@ onMounted(async () => {
         </VCardTitle>
 
         <VCardText>
+          <!-- Resumen de la venta -->
           <VRow class="mb-4">
+            <VCol cols="12">
+              <VCard color="primary" variant="tonal">
+                <VCardText>
+                  <VRow>
+                    <VCol cols="6" md="2">
+                      <div class="text-caption">Total Venta</div>
+                      <div class="text-h6">{{ formatPrice(selectedVenta?.total || 0) }}</div>
+                    </VCol>
+                    <VCol cols="6" md="2">
+                      <div class="text-caption">Cobrado</div>
+                      <div class="text-h6 text-success">{{ formatPrice(totalPagado) }}</div>
+                    </VCol>
+                    <VCol cols="6" md="2">
+                      <div class="text-caption">Cheques ⏳</div>
+                      <div class="text-h6 text-warning">{{ formatPrice(totalChequesPendientes) }}</div>
+                    </VCol>
+                    <VCol cols="6" md="2">
+                      <div class="text-caption">Deuda C.C.</div>
+                      <div class="text-h6 text-info">{{ formatPrice(totalCuentaCorriente) }}</div>
+                    </VCol>
+                    <VCol cols="12" md="4">
+                      <div class="text-caption">Saldo Pendiente</div>
+                      <div class="text-h6" :class="saldoActual > 0 ? 'text-warning' : 'text-success'">
+                        {{ formatPrice(Math.max(0, saldoActual)) }}
+                      </div>
+                      <div class="text-caption text-medium-emphasis" style="font-size: 10px;">
+                        (sin asignar)
+                      </div>
+                    </VCol>
+                  </VRow>
+                  
+                  <!-- Mostrar previsualización si hay monto ingresado -->
+                  <VRow v-if="nuevoPago.monto > 0" class="mt-2">
+                    <VCol cols="12">
+                      <VDivider class="mb-2" />
+                      <div class="text-caption text-center">Después de este pago</div>
+                      <div class="text-center">
+                        <span class="text-body-2">Saldo restante: </span>
+                        <span class="font-weight-bold" :class="saldoDespuesDelPago > 0 ? 'text-warning' : 'text-success'">
+                          {{ formatPrice(Math.max(0, saldoDespuesDelPago)) }}
+                        </span>
+                      </div>
+                    </VCol>
+                  </VRow>
+                </VCardText>
+              </VCard>
+            </VCol>
+          </VRow>
+
+          <!-- Alerta cuando está totalmente pagado -->
+          <VAlert 
+            v-if="Math.round(saldoDisponibleParaPagar) <= 0" 
+            type="success" 
+            variant="tonal"
+            class="mb-4"
+          >
+            ✅ Esta venta está completamente pagada y sin deuda pendiente
+          </VAlert>
+
+          <!-- Alerta informativa si hay deuda en cuenta corriente -->
+          <VAlert 
+            v-else-if="totalCuentaCorriente > 0 && saldoActual <= 0"
+            type="info" 
+            variant="tonal"
+            class="mb-4"
+          >
+            ℹ️ Hay <strong>{{ formatPrice(totalCuentaCorriente) }}</strong> en cuenta corriente (deuda del cliente). 
+            Puede registrar pagos para cancelar esta deuda.
+          </VAlert>
+
+          <!-- Alerta si hay saldo sin asignar -->
+          <VAlert 
+            v-else-if="saldoActual > 0"
+            type="warning" 
+            variant="tonal"
+            class="mb-4"
+          >
+            ⚠️ Hay <strong>{{ formatPrice(saldoActual) }}</strong> sin asignar. 
+            Puede registrar un pago o asignarlo a cuenta corriente.
+          </VAlert>
+
+          <!-- Formulario de nuevo pago -->
+          <VRow v-if="saldoDisponibleParaPagar > 0" class="mb-4">
             <VCol cols="12" md="4">
               <VSelect
                 v-model="nuevoPago.metodo_pago_id"
@@ -282,12 +487,30 @@ onMounted(async () => {
               />
             </VCol>
             <VCol cols="12" md="3">
-              <VTextField
-                v-model.number="nuevoPago.monto"
+              <NumberInput
+                v-model="nuevoPago.monto"
                 label="Monto"
-                type="number"
-                step="0.01"
+                :decimals="0"
+                prefix="$"
               />
+              <VBtn 
+                v-if="saldoDisponibleParaPagar > 0"
+                size="x-small" 
+                color="info" 
+                variant="text" 
+                class="mt-1"
+                @click="nuevoPago.monto = Math.round(saldoDisponibleParaPagar)"
+              >
+                <span v-if="totalCuentaCorriente > 0 && saldoActual <= 0">
+                  Pagar deuda: {{ formatPrice(totalCuentaCorriente) }}
+                </span>
+                <span v-else-if="totalCuentaCorriente > 0 && saldoActual > 0">
+                  Pagar todo ({{ formatPrice(saldoDisponibleParaPagar) }})
+                </span>
+                <span v-else>
+                  Pagar saldo completo ({{ formatPrice(saldoActual) }})
+                </span>
+              </VBtn>
             </VCol>
             <VCol cols="12" md="3">
               <VTextField
@@ -297,7 +520,12 @@ onMounted(async () => {
               />
             </VCol>
             <VCol cols="12" md="2">
-              <VBtn color="primary" @click="registrarPago" block>
+              <VBtn 
+                color="primary" 
+                @click="registrarPago" 
+                block
+                :disabled="!nuevoPago.metodo_pago_id || !nuevoPago.monto || saldoDisponibleParaPagar <= 0"
+              >
                 Registrar
               </VBtn>
             </VCol>
@@ -311,20 +539,117 @@ onMounted(async () => {
               <tr>
                 <th>Fecha</th>
                 <th>Método</th>
+                <th>Detalles</th>
                 <th class="text-end">Monto</th>
+                <th class="text-center">Estado</th>
+                <th class="text-center">Acciones</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="pago in pagosVenta" :key="pago.id">
                 <td>{{ pago.fecha }}</td>
                 <td>{{ pago.metodo_pago?.nombre || 'N/A' }}</td>
-                <td class="text-end">{{ formatPrice(pago.monto) }}</td>
-              </tr>
-              <tr class="font-weight-bold">
-                <td colspan="2" class="text-end">Total Pagado:</td>
-                <td class="text-end text-primary">
-                  {{ formatPrice(pagosVenta.reduce((sum, p) => sum + parseFloat(p.monto), 0)) }}
+                <td>
+                  <div v-if="pago.estado_cheque" class="text-caption">
+                    <div v-if="pago.numero_cheque">N°: {{ pago.numero_cheque }}</div>
+                    <div v-if="pago.fecha_cheque">Fecha: {{ pago.fecha_cheque }}</div>
+                    <div v-if="pago.observaciones_cheque" class="text-muted">{{ pago.observaciones_cheque }}</div>
+                  </div>
+                  <span v-else class="text-muted">-</span>
                 </td>
+                <td class="text-end">{{ formatPrice(pago.monto) }}</td>
+                <td class="text-center">
+                  <!-- Cuenta Corriente -->
+                  <VChip 
+                    v-if="pago.metodo_pago?.nombre === 'Cuenta Corriente'"
+                    size="small"
+                    color="info"
+                    variant="tonal"
+                  >
+                    Deuda
+                  </VChip>
+                  <!-- Cheque Pendiente -->
+                  <VChip 
+                    v-else-if="pago.estado_cheque === 'pendiente'"
+                    size="small"
+                    color="warning"
+                    variant="tonal"
+                  >
+                    Cheque Pendiente
+                  </VChip>
+                  <!-- Cheque Cobrado -->
+                  <VChip 
+                    v-else-if="pago.estado_cheque === 'cobrado'"
+                    size="small"
+                    color="success"
+                    variant="tonal"
+                  >
+                    Cheque Cobrado
+                  </VChip>
+                  <!-- Cheque Rechazado -->
+                  <VChip 
+                    v-else-if="pago.estado_cheque === 'rechazado'"
+                    size="small"
+                    color="error"
+                    variant="tonal"
+                  >
+                    Cheque Rechazado
+                  </VChip>
+                  <!-- Pago Normal -->
+                  <VChip 
+                    v-else
+                    size="small"
+                    color="success"
+                    variant="tonal"
+                  >
+                    Pagado
+                  </VChip>
+                </td>
+                <td class="text-center">
+                  <!-- Botones para cheques pendientes -->
+                  <div v-if="pago.estado_cheque === 'pendiente'" class="d-flex gap-1 justify-center">
+                    <VBtn
+                      size="x-small"
+                      color="success"
+                      variant="tonal"
+                      @click="marcarChequeCobrado(pago)"
+                      title="Marcar como cobrado"
+                    >
+                      ✓ Cobrado
+                    </VBtn>
+                    <VBtn
+                      size="x-small"
+                      color="error"
+                      variant="tonal"
+                      @click="marcarChequeRechazado(pago)"
+                      title="Marcar como rechazado"
+                    >
+                      ✗ Rechazado
+                    </VBtn>
+                  </div>
+                  <span v-else class="text-muted">-</span>
+                </td>
+              </tr>
+              <!-- Resumen de totales -->
+              <tr v-if="totalPagado > 0" class="font-weight-bold bg-success-lighten-5">
+                <td colspan="3" class="text-end">Total Recibido (cobrado):</td>
+                <td class="text-end text-success">{{ formatPrice(totalPagado) }}</td>
+                <td colspan="2"></td>
+              </tr>
+              <tr v-if="totalChequesPendientes > 0" class="font-weight-bold bg-warning-lighten-5">
+                <td colspan="3" class="text-end">Cheques Pendientes:</td>
+                <td class="text-end text-warning">{{ formatPrice(totalChequesPendientes) }}</td>
+                <td colspan="2"></td>
+              </tr>
+              <tr v-if="totalCuentaCorriente > 0" class="font-weight-bold bg-info-lighten-5">
+                <td colspan="3" class="text-end">Deuda en Cuenta Corriente:</td>
+                <td class="text-end text-info">{{ formatPrice(totalCuentaCorriente) }}</td>
+                <td colspan="2"></td>
+              </tr>
+              <tr v-if="saldoActual > 0" class="font-weight-bold bg-warning-lighten-5">
+                <td colspan="3" class="text-end">Saldo sin asignar:</td>
+                <td class="text-end text-warning">{{ formatPrice(saldoActual) }}</td>
+                <td colspan="2"></td>
               </tr>
             </tbody>
           </VTable>

@@ -7,6 +7,7 @@ import { getProductos } from '@/services/productos'
 import { getMetodosPago } from '@/services/metodosPago'
 import { getPedidosPendientes, getPedido } from '@/services/pedidos'
 import { toast } from '@/plugins/toast'
+import NumberInput from '@/components/NumberInput.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -37,6 +38,10 @@ const precioProducto = ref(0)
 const pedidosPendientes = ref([])
 const mostrarPedidos = ref(false)
 const numeroComprobantePreview = ref(null)
+
+// Búsqueda de clientes
+const busquedaCliente = ref('')
+const mostrarResultadosCliente = ref(false)
 
 // Pago
 const pagoActual = ref({
@@ -100,6 +105,26 @@ const productosFiltrados = computed(() => {
   }).slice(0, 10) // Limitar a 10 resultados
 })
 
+const clientesFiltrados = computed(() => {
+  if (!busquedaCliente.value || busquedaCliente.value.trim() === '') {
+    return []
+  }
+  
+  const termino = busquedaCliente.value.toLowerCase().trim()
+  
+  return clientes.value.filter(cliente => {
+    const nombre = (cliente.nombre || '').toLowerCase()
+    const apellido = (cliente.apellido || '').toLowerCase()
+    const email = (cliente.email || '').toLowerCase()
+    const cuit = (cliente.cuit || '').toLowerCase()
+    const nombreCompleto = `${nombre} ${apellido}`
+    
+    return nombreCompleto.includes(termino) || 
+           email.includes(termino) || 
+           cuit.includes(termino)
+  }).slice(0, 10)
+})
+
 // Methods
 const fetchClientes = async () => {
   try {
@@ -129,6 +154,12 @@ const fetchMetodosPago = async () => {
     toast.error('Error al cargar métodos de pago')
     console.error('Error al cargar métodos de pago:', e)
   }
+}
+
+const seleccionarCliente = (cliente) => {
+  venta.value.cliente_id = cliente.id
+  busquedaCliente.value = `${cliente.nombre} ${cliente.apellido}`
+  mostrarResultadosCliente.value = false
 }
 
 const fetchPedidosPendientes = async (clienteId) => {
@@ -502,30 +533,61 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
         <VRow>
           <!-- Información del Cliente -->
           <VCol cols="12">
-            <VCard variant="outlined" class="mb-3">
+            <VCard variant="outlined" class="mb-3" style="position: relative; z-index: 200; overflow: visible;">
               <VCardTitle class="text-body-1 pa-3 bg-primary">
                 <VIcon class="mr-2" size="18">ri-user-line</VIcon>
                 Información del Cliente
               </VCardTitle>
-              <VCardText class="pa-3">
-                <VSelect
-                  v-model="venta.cliente_id"
-                  :items="clientes"
-                  item-title="nombre"
-                  item-value="id"
-                  label="Cliente*"
-                  required
-                  prepend-inner-icon="ri-user-3-line"
-                  density="compact"
-                  variant="outlined"
-                >
-                  <template #item="{ props, item }">
-                    <VListItem
-                      v-bind="props"
-                      :subtitle="`CUIT: ${item.raw.cuit} | Crédito: ${formatPrice(item.raw.limite_credito)}`"
-                    />
-                  </template>
-                </VSelect>
+              <VCardText class="pa-3" style="overflow: visible; min-height: 250px;">
+                <div style="position: relative; overflow: visible; z-index: 1000;">
+                  <VTextField
+                    v-model="busquedaCliente"
+                    label="Buscar cliente por nombre, email o CUIT*"
+                    prepend-inner-icon="ri-user-search-line"
+                    density="compact"
+                    variant="outlined"
+                    clearable
+                    @input="mostrarResultadosCliente = true"
+                    @blur="setTimeout(() => mostrarResultadosCliente = false, 200)"
+                    @focus="busquedaCliente && (mostrarResultadosCliente = true)"
+                    @click:clear="venta.cliente_id = null; mostrarResultadosCliente = false; busquedaCliente = ''"
+                  />
+                  
+                  <!-- Dropdown de resultados de clientes -->
+                  <VCard
+                    v-if="mostrarResultadosCliente && busquedaCliente && busquedaCliente.trim().length > 0 && clientesFiltrados.length > 0"
+                    class="position-absolute elevation-8"
+                    style="top: 100%; left: 0; right: 0; z-index: 10000; max-height: 350px; overflow-y: auto; width: 100%; margin-top: 4px;"
+                  >
+                    <VList density="compact">
+                      <VListItem
+                        v-for="cliente in clientesFiltrados"
+                        :key="cliente.id"
+                        @click="seleccionarCliente(cliente)"
+                        class="cursor-pointer"
+                        :active="venta.cliente_id === cliente.id"
+                      >
+                        <VListItemTitle>{{ cliente.nombre }} {{ cliente.apellido }}</VListItemTitle>
+                        <VListItemSubtitle>
+                          CUIT: {{ cliente.cuit || 'N/A' }} | Crédito: {{ formatPrice(cliente.limite_credito) }}
+                          <br>Email: {{ cliente.email }} | Tel: {{ cliente.telefono }}
+                        </VListItemSubtitle>
+                      </VListItem>
+                    </VList>
+                  </VCard>
+                  
+                  <!-- Mensaje si no hay resultados -->
+                  <VCard
+                    v-if="mostrarResultadosCliente && busquedaCliente && busquedaCliente.trim().length > 0 && clientesFiltrados.length === 0"
+                    class="position-absolute elevation-4"
+                    style="top: 100%; left: 0; right: 0; z-index: 10000; width: 100%; margin-top: 4px;"
+                  >
+                    <VCardText class="text-center text-grey pa-3">
+                      <VIcon>ri-search-line</VIcon>
+                      <div class="text-body-2 mt-1">No se encontraron clientes</div>
+                    </VCardText>
+                  </VCard>
+                </div>
 
                 <div v-if="clienteSeleccionado" class="mt-3 pa-3 bg-surface rounded">
                   <VRow dense>
@@ -693,12 +755,10 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
                     />
                   </VCol>
                   <VCol cols="12" md="3">
-                    <VTextField
-                      v-model.number="precioProducto"
+                    <NumberInput
+                      v-model="precioProducto"
                       label="Precio Unitario"
-                      type="number"
-                      min="0"
-                      step="0.01"
+                      prefix="$ "
                       prepend-inner-icon="ri-money-dollar-circle-line"
                       density="compact"
                       variant="outlined"
@@ -974,16 +1034,13 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
                     </VSelect>
                   </VCol>
                   <VCol cols="12" md="6">
-                    <VTextField
-                      v-model.number="pagoActual.monto"
+                    <NumberInput
+                      v-model="pagoActual.monto"
                       label="Monto del Pago"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      prefix="$"
+                      prefix="$ "
                       variant="outlined"
                       density="comfortable"
-                      bg-color="white"
+                      prepend-inner-icon="ri-money-dollar-circle-line"
                       :hint="saldoPendiente > 0 ? `Saldo pendiente: ${formatPrice(saldoPendiente)}` : ''"
                       persistent-hint
                     />

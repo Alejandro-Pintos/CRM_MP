@@ -20,6 +20,80 @@ class Venta extends Model
         'fecha' => 'datetime',
     ];
 
+    /**
+     * Calcular automáticamente el estado de pago basándose en pagos reales
+     */
+    protected function estadoPago(): \Illuminate\Database\Eloquent\Casts\Attribute
+    {
+        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+            get: function ($value) {
+                // Si se está accediendo desde una consulta sin relación cargada,
+                // usar el valor de la base de datos para evitar N+1
+                if (!$this->relationLoaded('pagos')) {
+                    return $value;
+                }
+
+                // Calcular estado real basado en pagos (excluyendo cuenta corriente)
+                $total = (float) $this->total;
+                
+                // Obtener ID de método "Cuenta Corriente"
+                $cuentaCorrienteId = MetodoPago::where('nombre', 'Cuenta Corriente')->value('id');
+                
+                // Calcular solo pagos reales: sin cuenta corriente Y solo cheques cobrados
+                $totalPagado = $cuentaCorrienteId 
+                    ? (float) $this->pagos
+                        ->where('metodo_pago_id', '!=', $cuentaCorrienteId)
+                        ->filter(function($pago) {
+                            // Incluir si NO es cheque O si es cheque cobrado
+                            return is_null($pago->estado_cheque) || $pago->estado_cheque === 'cobrado';
+                        })
+                        ->sum('monto')
+                    : (float) $this->pagos
+                        ->filter(function($pago) {
+                            return is_null($pago->estado_cheque) || $pago->estado_cheque === 'cobrado';
+                        })
+                        ->sum('monto');
+                
+                // También obtener cuenta corriente (deuda)
+                $totalCuentaCorriente = $cuentaCorrienteId
+                    ? (float) $this->pagos->where('metodo_pago_id', $cuentaCorrienteId)->sum('monto')
+                    : 0;
+                
+                // Cheques pendientes
+                $totalChequesPendientes = (float) $this->pagos
+                    ->where('estado_cheque', 'pendiente')
+                    ->sum('monto');
+
+                // LÓGICA CORRECTA:
+                // - "pagado": Todo el dinero fue recibido (sin deuda en C.C. ni cheques pendientes)
+                // - "parcial": Hay pagos, deuda o cheques pendientes
+                // - "pendiente": No hay ningún pago ni deuda
+                
+                // Si hay deuda en cuenta corriente, NUNCA está "pagado"
+                if ($totalCuentaCorriente > 0) {
+                    return 'parcial'; // Hay deuda pendiente
+                }
+                
+                // Si hay cheques pendientes, tampoco está "pagado"
+                if ($totalChequesPendientes > 0) {
+                    return 'parcial'; // Hay cheques sin cobrar
+                }
+                
+                // Si no hay deuda ni cheques pendientes, verificar si está pagado en efectivo
+                $saldoSinPagar = round($total - $totalPagado, 2);
+                
+                if ($saldoSinPagar <= 0.01) {
+                    return 'pagado'; // Todo pagado y cobrado
+                } elseif ($totalPagado > 0) {
+                    return 'parcial'; // Pago parcial
+                } else {
+                    return 'pendiente'; // Sin pagos
+                }
+            },
+            set: fn ($value) => $value // Permite guardar manualmente si es necesario
+        );
+    }
+
     public function items()
     {
         return $this->hasMany(DetalleVenta::class, 'venta_id');

@@ -25,7 +25,7 @@ class VentaController extends Controller
         $hasta    = $request->date('hasta');
         $perPage  = $request->input('per_page', 15);
 
-        $query = Venta::with(['items', 'cliente'])->orderByDesc('fecha');
+        $query = Venta::with(['items', 'cliente', 'pagos'])->orderByDesc('fecha');
 
         if ($qCliente) $query->where('cliente_id', $qCliente);
         if ($estado && $estado->isNotEmpty()) $query->where('estado_pago', $estado);
@@ -69,7 +69,7 @@ public function store(VentaStoreRequest $request, VentaService $service)
 
     public function show(Venta $venta)
     {
-        $venta->load('items');
+        $venta->load(['items', 'pagos']);
         return new VentaResource($venta);
     }
 

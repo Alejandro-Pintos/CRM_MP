@@ -21,6 +21,11 @@ export default [
         icon: { icon: 'ri-add-circle-line' },
       },
       {
+        title: 'Presupuestador',
+        to: '/ventas/presupuesto',
+        icon: { icon: 'ri-file-text-line' },
+      },
+      {
         title: 'Historial',
         to: '/ventas',
         icon: { icon: 'ri-file-list-3-line' },

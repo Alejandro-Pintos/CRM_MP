@@ -2,6 +2,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { getClientes, createCliente, updateCliente, deleteCliente, getCuentaCorriente } from '@/services/clientes'
 import { toast } from '@/plugins/toast'
+import NumberInput from '@/components/NumberInput.vue'
 
 const clientes = ref([])
 const loading = ref(false)
@@ -413,15 +414,13 @@ onMounted(fetchClientes)
 
               <!-- Campo de límite de crédito (solo visible si cuenta corriente está habilitada) -->
               <VCol v-if="tieneCuentaCorriente" cols="12" md="6">
-                <VTextField
-                  v-model.number="editedItem.limite_credito"
+                <NumberInput
+                  v-model="editedItem.limite_credito"
                   label="Límite de Crédito*"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  prefix="$"
+                  prefix="$ "
                   hint="Monto máximo que el cliente puede deber"
                   persistent-hint
+                  prepend-inner-icon="ri-money-dollar-circle-line"
                   :rules="[v => v > 0 || 'El límite debe ser mayor a 0']"
                 />
               </VCol>

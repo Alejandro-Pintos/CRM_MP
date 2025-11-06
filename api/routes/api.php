@@ -10,6 +10,7 @@ use App\Http\Controllers\CuentaCorrienteController;
 use App\Http\Controllers\Api\ReporteController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Api\PedidoController;
+use App\Http\Controllers\PresupuestoController;
 
 Route::prefix('v1')->middleware('auth:api')->group(function () {
 
@@ -41,12 +42,18 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
     // Pagos por venta  
     Route::get('ventas/{venta}/pagos', [PagoController::class, 'index'])->name('pagos.index');
     Route::post('ventas/{venta}/pagos', [PagoController::class, 'store'])->name('pagos.store');
+    
+    // Actualizar estado de cheque
+    Route::patch('pagos/{pago}/estado-cheque', [PagoController::class, 'actualizarEstadoCheque'])->name('pagos.estado_cheque');
 
     // Catálogo de métodos de pago
     Route::get('metodos-pago', [MetodoPagoController::class, 'index'])->name('metodos_pago.index');
 
     // Cuenta corriente por cliente
     Route::get('clientes/{cliente}/cuenta-corriente', [CuentaCorrienteController::class, 'show'])->name('cta_cte.show');
+
+    // Presupuestos
+    Route::post('presupuestos/enviar-email', [PresupuestoController::class, 'enviarEmail'])->name('presupuestos.enviar_email');
 
     // Reportes
     Route::get('reportes/ventas', [ReporteController::class, 'ventas'])->name('reportes.ventas');

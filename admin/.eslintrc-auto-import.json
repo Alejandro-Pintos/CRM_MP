@@ -368,6 +368,8 @@
     "advancedThemePlugin": true,
     "designTokens": true,
     "useAdvancedTheme": true,
-    "useErrorHandler": true
+    "useErrorHandler": true,
+    "useNumberFormat": true,
+    "vNumberFormat": true
   }
 }

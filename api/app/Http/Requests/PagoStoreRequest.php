@@ -13,6 +13,10 @@ class PagoStoreRequest extends FormRequest
             'metodo_pago_id' => ['required','integer','exists:metodos_pago,id'],
             'monto'          => ['required','numeric','gt:0'],
             'fecha_pago'     => ['nullable','date'],
+            // Campos de cheque (opcionales)
+            'numero_cheque'  => ['nullable','string','max:100'],
+            'fecha_cheque'   => ['nullable','date'],
+            'observaciones_cheque' => ['nullable','string','max:500'],
         ];
     }
 }

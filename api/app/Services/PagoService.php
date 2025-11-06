@@ -4,6 +4,7 @@ namespace App\Services;
 use App\Models\Pago;
 use App\Models\Venta;
 use App\Models\Cliente;
+use App\Models\MetodoPago;
 use App\Models\MovimientoCuentaCorriente;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -38,6 +39,19 @@ class PagoService
             $pago->metodo_pago_id = $data['metodo_pago_id'];
             $pago->monto = $monto;
             $pago->fecha_pago = $data['fecha_pago'] ?? now();
+            
+            // Verificar si el método de pago es cheque
+            $metodoPago = MetodoPago::find($data['metodo_pago_id']);
+            $esCheque = $metodoPago && strtolower($metodoPago->nombre) === 'cheque';
+            
+            if ($esCheque) {
+                // Si es cheque, marcar como pendiente por defecto
+                $pago->estado_cheque = 'pendiente';
+                $pago->numero_cheque = $data['numero_cheque'] ?? null;
+                $pago->fecha_cheque = $data['fecha_cheque'] ?? null;
+                $pago->observaciones_cheque = $data['observaciones_cheque'] ?? null;
+            }
+            
             $pago->save();
 
             // Actualizar estado de la venta
@@ -66,6 +80,9 @@ class PagoService
                     'descripcion'  => 'Pago venta #'.$venta->id,
                 ]);
             }
+
+            // Cargar la relación metodoPago antes de devolver
+            $pago->load('metodoPago');
 
             return $pago;
         });
