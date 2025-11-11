@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { getClientes, createCliente, updateCliente, deleteCliente, getCuentaCorriente } from '@/services/clientes'
 import { toast } from '@/plugins/toast'
 import NumberInput from '@/components/NumberInput.vue'
@@ -92,10 +92,11 @@ const headers = [
 
 const headersCuentaCorriente = [
   { title: 'Fecha', key: 'fecha' },
+  { title: 'Tipo', key: 'tipo' },
   { title: 'Descripción', key: 'descripcion' },
   { title: 'Debe', key: 'debe' },
   { title: 'Haber', key: 'haber' },
-  { title: 'Saldo', key: 'saldo' },
+  { title: 'Saldo', key: 'saldo_acumulado' },
 ]
 
 const fetchClientes = async () => {
@@ -149,15 +150,14 @@ const deleteItemConfirm = async () => {
 }
 
 const verCuentaCorriente = async (item) => {
-  selectedCliente.value = item
   try {
     const data = await getCuentaCorriente(item.id)
-    cuentaCorriente.value = Array.isArray(data) ? data : (data.data ?? [])
+    selectedCliente.value = data.cliente
+    cuentaCorriente.value = data.movimientos  // Asegúrate que esta línea esté
     dialogCuentaCorriente.value = true
   } catch (e) {
-    const errorMsg = e.message || 'Error al cargar cuenta corriente'
-    error.value = errorMsg
-    toast.error(errorMsg)
+    console.error('Error:', e)
+    toast.error(e.message)
   }
 }
 
@@ -199,12 +199,18 @@ const closeDelete = () => {
 
 const save = async () => {
   try {
+    // Normalizar datos antes de enviar
+    const dataToSend = {
+      ...editedItem.value,
+      limite_credito: parseFloat(editedItem.value.limite_credito) || 0,
+    }
+    
     if (editedIndex.value > -1) {
-      const updated = await updateCliente(editedItem.value.id, editedItem.value)
+      const updated = await updateCliente(dataToSend.id, dataToSend)
       Object.assign(clientes.value[editedIndex.value], updated)
       toast.success('Cliente actualizado correctamente')
     } else {
-      await createCliente(editedItem.value)
+      await createCliente(dataToSend)
       toast.success('Cliente creado correctamente')
     }
     close()
@@ -453,7 +459,7 @@ onMounted(fetchClientes)
                   hint="Monto máximo que el cliente puede deber"
                   persistent-hint
                   prepend-inner-icon="ri-money-dollar-circle-line"
-                  :rules="[v => v > 0 || 'El límite debe ser mayor a 0']"
+                  :rules="[v => v >= 0 || 'El límite debe ser mayor o igual a 0']"
                 />
               </VCol>
 
@@ -506,26 +512,106 @@ onMounted(fetchClientes)
         </VCardTitle>
 
         <VCardText>
+          <!-- Resumen de cuenta -->
+          <VRow class="mb-4">
+            <VCol cols="4">
+              <VCard variant="tonal" color="primary">
+                <VCardText>
+                  <div class="text-caption">Límite de Crédito</div>
+                  <div class="text-h6">{{ formatPrice(selectedCliente?.limite_credito ?? 0) }}</div>
+                </VCardText>
+              </VCard>
+            </VCol>
+            <VCol cols="4">
+              <VCard variant="tonal" :color="(selectedCliente?.saldo_actual ?? 0) > 0 ? 'error' : 'success'">
+                <VCardText>
+                  <div class="text-caption">Saldo Actual</div>
+                  <div class="text-h6">{{ formatPrice(selectedCliente?.saldo_actual ?? 0) }}</div>
+                </VCardText>
+              </VCard>
+            </VCol>
+            <VCol cols="4">
+              <VCard variant="tonal" color="info">
+                <VCardText>
+                  <div class="text-caption">Crédito Disponible</div>
+                  <div class="text-h6">{{ formatPrice((selectedCliente?.limite_credito ?? 0) - (selectedCliente?.saldo_actual ?? 0)) }}</div>
+                </VCardText>
+              </VCard>
+            </VCol>
+          </VRow>
+
+
+
+          <!-- Tabla de movimientos -->
           <VDataTable
-            v-if="cuentaCorriente.length > 0"
             :headers="headersCuentaCorriente"
             :items="cuentaCorriente"
             density="compact"
             class="elevation-1"
+            :items-per-page="15"
+            show-expand
           >
+            <template #item.tipo="{ item }">
+              <VChip 
+                :color="item.tipo === 'venta' ? 'primary' : 'success'" 
+                size="small"
+                variant="flat"
+              >
+                {{ item.tipo === 'venta' ? 'Venta' : 'Pago' }}
+              </VChip>
+            </template>
+            
+            <template #item.descripcion="{ item }">
+              <div>
+                <div class="font-weight-medium">{{ item.descripcion }}</div>
+                <div v-if="item.detalles && item.detalles.length > 0" class="text-caption text-medium-emphasis">
+                  {{ item.detalles.length }} producto(s) - Click para expandir
+                </div>
+              </div>
+            </template>
+            
             <template #item.debe="{ item }">
               {{ item.debe ? formatPrice(item.debe) : '-' }}
             </template>
             <template #item.haber="{ item }">
               {{ item.haber ? formatPrice(item.haber) : '-' }}
             </template>
-            <template #item.saldo="{ item }">
-              <span :class="item.saldo < 0 ? 'text-error' : 'text-success'">
-                {{ formatPrice(item.saldo) }}
+            <template #item.saldo_acumulado="{ item }">
+              <span :class="item.saldo_acumulado < 0 ? 'text-error' : 'text-success'">
+                {{ formatPrice(item.saldo_acumulado) }}
               </span>
             </template>
+            
+            <template #expanded-row="{ item, columns }">
+              <tr v-if="item.detalles && item.detalles.length > 0">
+                <td :colspan="columns.length" class="pa-4 bg-grey-lighten-4">
+                  <div class="text-subtitle-2 mb-2">Detalles de la venta:</div>
+                  <VTable density="compact">
+                    <thead>
+                      <tr>
+                        <th>Producto</th>
+                        <th class="text-right">Cantidad</th>
+                        <th class="text-right">Precio Unit.</th>
+                        <th class="text-right">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(detalle, idx) in item.detalles" :key="idx">
+                        <td>{{ detalle.producto }}</td>
+                        <td class="text-right">{{ detalle.cantidad }}</td>
+                        <td class="text-right">{{ formatPrice(detalle.precio_unitario) }}</td>
+                        <td class="text-right font-weight-bold">{{ formatPrice(detalle.subtotal) }}</td>
+                      </tr>
+                    </tbody>
+                  </VTable>
+                </td>
+              </tr>
+            </template>
+            
+            <template #no-data>
+              <p class="text-center text-disabled pa-4">No hay movimientos registrados</p>
+            </template>
           </VDataTable>
-          <p v-else class="text-center text-disabled">No hay movimientos en la cuenta corriente</p>
         </VCardText>
 
         <VCardActions>

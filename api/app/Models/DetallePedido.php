@@ -16,6 +16,7 @@ class DetallePedido extends Model
         'precio_compra',
         'precio_venta',
         'porcentaje_iva',
+        'porcentaje_extra',
         'precio_unitario',
         'observaciones',
     ];
@@ -25,6 +26,7 @@ class DetallePedido extends Model
         'precio_compra' => 'decimal:2',
         'precio_venta' => 'decimal:2',
         'porcentaje_iva' => 'decimal:2',
+        'porcentaje_extra' => 'decimal:2',
         'precio_unitario' => 'decimal:2',
     ];
 

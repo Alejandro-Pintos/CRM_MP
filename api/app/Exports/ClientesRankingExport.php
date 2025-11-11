@@ -30,6 +30,7 @@ class ClientesRankingExport implements FromCollection, WithHeadings, ShouldAutoS
     {
         $query = DB::table('ventas as v')
             ->join('clientes as c', 'c.id', '=', 'v.cliente_id')
+            ->whereNull('v.deleted_at') // Excluir ventas eliminadas (soft delete)
             ->when($this->from, fn($q) => $q->whereDate('v.fecha', '>=', $this->from))
             ->when($this->to,   fn($q) => $q->whereDate('v.fecha', '<=', $this->to));
 

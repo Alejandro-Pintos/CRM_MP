@@ -27,7 +27,7 @@ class FullReportSingleSheetExport implements FromView, WithTitle, ShouldAutoSize
     public function view(): View
     {
         // ---- Ventas base
-        $ventasBase = DB::table('ventas');
+        $ventasBase = DB::table('ventas')->whereNull('deleted_at'); // Excluir eliminadas
         if ($this->from) $ventasBase->whereDate('fecha', '>=', $this->from);
         if ($this->to)   $ventasBase->whereDate('fecha', '<=', $this->to);
 
@@ -54,6 +54,7 @@ class FullReportSingleSheetExport implements FromView, WithTitle, ShouldAutoSize
         // TOP Clientes
         $clientes = DB::table('ventas as v')
             ->join('clientes as c', 'c.id', '=', 'v.cliente_id')
+            ->whereNull('v.deleted_at') // Excluir ventas eliminadas
             ->when($this->from, fn($q) => $q->whereDate('v.fecha','>=',$this->from))
             ->when($this->to,   fn($q) => $q->whereDate('v.fecha','<=',$this->to))
             ->selectRaw('v.cliente_id, c.nombre, COUNT(*) as compras, SUM(v.total) as ingreso_total')
@@ -66,6 +67,7 @@ class FullReportSingleSheetExport implements FromView, WithTitle, ShouldAutoSize
         $productos = DB::table('ventas as v')
             ->join('detalle_venta as d', 'd.venta_id', '=', 'v.id')
             ->join('productos as p', 'p.id', '=', 'd.producto_id')
+            ->whereNull('v.deleted_at') // Excluir ventas eliminadas
             ->when($this->from, fn($q) => $q->whereDate('v.fecha','>=',$this->from))
             ->when($this->to,   fn($q) => $q->whereDate('v.fecha','<=',$this->to))
             ->selectRaw('d.producto_id, p.nombre,
@@ -85,6 +87,7 @@ class FullReportSingleSheetExport implements FromView, WithTitle, ShouldAutoSize
                 ->join('detalle_venta as d', 'd.venta_id', '=', 'v.id')
                 ->join('productos as p', 'p.id', '=', 'd.producto_id')
                 ->leftJoin('proveedores as pr', 'pr.id', '=', 'p.proveedor_id')
+                ->whereNull('v.deleted_at') // Excluir ventas eliminadas
                 ->when($this->from, fn($q) => $q->whereDate('v.fecha','>=',$this->from))
                 ->when($this->to,   fn($q) => $q->whereDate('v.fecha','<=',$this->to));
 

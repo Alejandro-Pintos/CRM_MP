@@ -47,20 +47,39 @@ class PedidoResource extends JsonResource
             
             'items' => $this->whenLoaded('items', function() {
                 return $this->items->map(function($item) {
+                    // Obtener datos actuales del producto
+                    $producto = $item->producto;
+                    
                     return [
                         'id' => $item->id,
                         'producto_id' => $item->producto_id,
-                        'producto_nombre' => $item->producto->nombre ?? null,
+                        'producto_nombre' => $producto->nombre ?? null,
+                        'producto_codigo' => $producto->codigo ?? null,
                         'cantidad' => $item->cantidad,
-                        'precio_unitario' => $item->precio_unitario,
-                        'subtotal' => $item->subtotal,
+                        
+                        // Usar datos actuales del producto (no los guardados en el pedido)
+                        'precio_compra' => $producto->precio_compra ?? 0,
+                        'precio_venta' => $producto->precio_venta ?? 0,
+                        'precio_unitario' => $producto->precio ?? 0,
+                        'iva' => $producto->iva ?? 0,
+                        'precio_total' => $producto->precio_total ?? 0,
+                        'extra_porcentaje' => 0,
+                        'margen_minorista' => 0,
+                        
+                        // Subtotal calculado con datos actuales
+                        'subtotal' => ($producto->precio_total ?? 0) * $item->cantidad,
                         'observaciones' => $item->observaciones,
                     ];
                 });
             }),
             
             'total' => $this->whenLoaded('items', function() {
-                return $this->items->sum('subtotal');
+                return $this->items->sum(function($item) {
+                    // Calcular total con precios actuales del producto
+                    $producto = $item->producto;
+                    $precioTotal = $producto->precio_total ?? 0;
+                    return $precioTotal * $item->cantidad;
+                });
             }),
             
             'observaciones' => $this->observaciones,

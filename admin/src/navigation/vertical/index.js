@@ -33,6 +33,17 @@ export default [
     ],
   },
   {
+    title: 'Pagos',
+    icon: { icon: 'ri-money-dollar-circle-line' },
+    children: [
+      {
+        title: 'Cheques',
+        to: '/pagos/cheques',
+        icon: { icon: 'ri-bank-card-line' },
+      },
+    ],
+  },
+  {
     title: 'Pedidos',
     to: '/pedidos',
     icon: { icon: 'ri-shopping-cart-line' },

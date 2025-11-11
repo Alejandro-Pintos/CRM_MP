@@ -32,6 +32,10 @@ const precioProducto = ref(0)
 const busquedaProducto = ref('')
 const mostrarResultadosProducto = ref(false)
 
+// Diálogo de confirmación para eliminar producto
+const dialogEliminarProducto = ref(false)
+const productoAEliminar = ref(null)
+
 // Búsqueda de clientes
 const busquedaCliente = ref('')
 const mostrarResultadosCliente = ref(false)
@@ -91,7 +95,8 @@ const seleccionarCliente = (cliente) => {
 const seleccionarProducto = (producto) => {
   productoSeleccionado.value = producto.id
   busquedaProducto.value = producto.nombre
-  precioProducto.value = producto.precio || 0
+  // Usar precio_total (con IVA) en lugar de precio
+  precioProducto.value = producto.precio_total || producto.precio_venta * (1 + (producto.iva || 0) / 100) || 0
   mostrarResultadosProducto.value = false
 }
 
@@ -125,8 +130,22 @@ const agregarProducto = () => {
 }
 
 const eliminarProducto = (index) => {
-  presupuesto.value.productos.splice(index, 1)
-  toast.info('Producto eliminado')
+  productoAEliminar.value = index
+  dialogEliminarProducto.value = true
+}
+
+const confirmarEliminarProducto = () => {
+  if (productoAEliminar.value !== null) {
+    presupuesto.value.productos.splice(productoAEliminar.value, 1)
+    toast.info('Producto eliminado')
+  }
+  dialogEliminarProducto.value = false
+  productoAEliminar.value = null
+}
+
+const cancelarEliminarProducto = () => {
+  dialogEliminarProducto.value = false
+  productoAEliminar.value = null
 }
 
 const verVistaPrevia = () => {
@@ -673,7 +692,7 @@ onMounted(async () => {
                   <VCol cols="12" md="3">
                     <NumberInput
                       v-model="precioProducto"
-                      label="Precio Unitario"
+                      label="Precio Total (c/IVA)"
                       prefix="$ "
                       prepend-inner-icon="ri-money-dollar-circle-line"
                       density="compact"
@@ -1031,6 +1050,27 @@ onMounted(async () => {
         <p class="text-h6 text-white">Procesando...</p>
       </div>
     </VOverlay>
+
+    <!-- Diálogo de confirmación para eliminar producto -->
+    <VDialog v-model="dialogEliminarProducto" max-width="500px">
+      <VCard>
+        <VCardTitle class="text-h5">
+          ¿Está seguro de eliminar este producto?
+        </VCardTitle>
+        <VCardText>
+          Esta acción no se puede deshacer.
+        </VCardText>
+        <VCardActions>
+          <VSpacer />
+          <VBtn color="secondary" variant="text" @click="cancelarEliminarProducto">
+            Cancelar
+          </VBtn>
+          <VBtn color="error" variant="text" @click="confirmarEliminarProducto">
+            Eliminar
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
   </div>
 </template>
 

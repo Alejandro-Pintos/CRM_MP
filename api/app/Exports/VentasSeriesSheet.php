@@ -32,6 +32,7 @@ class VentasSeriesSheet implements FromCollection, WithHeadings, ShouldAutoSize,
             : "DATE(v.fecha)";
 
         $base = DB::table('ventas as v')
+            ->whereNull('v.deleted_at') // Excluir ventas eliminadas (soft delete)
             ->when($this->from, fn($q) => $q->whereDate('v.fecha','>=',$this->from))
             ->when($this->to,   fn($q) => $q->whereDate('v.fecha','<=',$this->to))
             ->when($this->clienteId,  fn($q) => $q->where('v.cliente_id', $this->clienteId))

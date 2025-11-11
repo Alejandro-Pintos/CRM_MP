@@ -113,35 +113,65 @@ class PagoService
             $metodoPago = MetodoPago::find($data['metodo_pago_id']);
             $esCheque = $metodoPago && strtolower($metodoPago->nombre) === 'cheque';
             
+            \Log::info('PagoService - Creando pago', [
+                'metodo_id' => $data['metodo_pago_id'],
+                'metodo_nombre' => $metodoPago ? $metodoPago->nombre : 'NULL',
+                'es_cheque' => $esCheque,
+                'numero_cheque_recibido' => $data['numero_cheque'] ?? 'NULL',
+                'fecha_cheque_recibida' => $data['fecha_cheque'] ?? 'NULL'
+            ]);
+            
             if ($esCheque) {
                 // Si es cheque, marcar como pendiente por defecto
                 $pago->estado_cheque = 'pendiente';
                 $pago->numero_cheque = $data['numero_cheque'] ?? null;
                 $pago->fecha_cheque = $data['fecha_cheque'] ?? null;
                 $pago->observaciones_cheque = $data['observaciones_cheque'] ?? null;
+                
+                \Log::info('PagoService - Cheque configurado', [
+                    'estado_cheque' => $pago->estado_cheque,
+                    'numero_cheque' => $pago->numero_cheque,
+                    'fecha_cheque' => $pago->fecha_cheque
+                ]);
             }
             
             $pago->save();
+            
+            \Log::info('PagoService - Pago guardado', [
+                'pago_id' => $pago->id,
+                'estado_cheque_guardado' => $pago->estado_cheque
+            ]);
 
-            // El estado se calculará automáticamente mediante el accessor
-            // Solo necesitamos recargar la relación pagos para que el accessor funcione
+            // CRÍTICO: Recargar pagos ANTES de guardar venta para que el accessor calcule correctamente
             $venta->load('pagos');
-            $venta->save(); // Esto guardará el estado calculado por el accessor
+            
+            // Forzar recálculo del estado_pago
+            $estadoCalculado = $venta->estado_pago; // Esto ejecuta el accessor
+            $venta->estado_pago = $estadoCalculado; // Lo asigna explícitamente
+            $venta->save(); // Guarda el estado correcto
 
-            // Disminuir saldo del cliente
-            $cliente->saldo_actual = round((float)$cliente->saldo_actual - $monto, 2);
-            $cliente->save();
+            // CRÍTICO: Solo reducir saldo del cliente si NO es cheque pendiente
+            // Los cheques pendientes no cuentan como dinero cobrado
+            $debeReducirSaldo = !$esCheque || ($esCheque && isset($data['estado_cheque']) && $data['estado_cheque'] === 'cobrado');
+            
+            if ($debeReducirSaldo) {
+                // Disminuir saldo del cliente (la lógica original de cheques)
+                $cliente->saldo_actual = round((float)$cliente->saldo_actual - $monto, 2);
+                $cliente->save();
 
-            // Crear movimiento de cuenta corriente (pago = monto negativo, reduce deuda)
-            if ((float)$cliente->limite_credito > 0) {
-                MovimientoCuentaCorriente::create([
-                    'cliente_id'   => $cliente->id,
-                    'tipo'         => 'pago',
-                    'referencia_id'=> $pago->id,
-                    'monto'        => -abs($monto), // Negativo = reduce deuda
-                    'fecha'        => $pago->fecha_pago,
-                    'descripcion'  => 'Pago venta #'.$venta->id,
-                ]);
+                // Crear movimiento de cuenta corriente (pago = monto negativo, reduce deuda)
+                if ((float)$cliente->limite_credito > 0) {
+                    MovimientoCuentaCorriente::create([
+                        'cliente_id'   => $cliente->id,
+                        'tipo'         => 'pago',
+                        'referencia_id'=> $pago->id,
+                        'monto'        => -abs($monto), // Negativo = reduce deuda
+                        'debe'         => 0,
+                        'haber'        => abs($monto),  // Pago = HABER (reduce deuda)
+                        'fecha'        => $pago->fecha_pago,
+                        'descripcion'  => 'Pago venta #'.$venta->id . ($esCheque ? ' (Cheque cobrado)' : ''),
+                    ]);
+                }
             }
 
             // Cargar la relación metodoPago antes de devolver

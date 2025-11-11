@@ -25,6 +25,7 @@ class StorePedidoRequest extends FormRequest
             'cliente_id' => ['required', 'integer', 'exists:clientes,id'],
             'fecha_pedido' => ['nullable', 'date'],
             'fecha_entrega_aprox' => ['nullable', 'date', 'after:fecha_pedido'],
+            'fecha_despacho' => ['nullable', 'date'],
             'estado' => ['nullable', 'in:pendiente,en_proceso,entregado,cancelado'],
             'direccion_entrega' => ['nullable', 'string', 'max:255'],
             'ciudad_entrega' => ['nullable', 'string', 'max:150'],
@@ -36,6 +37,7 @@ class StorePedidoRequest extends FormRequest
             'clima_humedad' => ['nullable', 'integer', 'min:0', 'max:100'],
             'clima_descripcion' => ['nullable', 'string'],
             'clima_json' => ['nullable', 'string'],
+            'pronostico_extendido' => ['nullable', 'string'], // JSON con pronóstico extendido
             
             // Items del pedido
             'items' => ['required', 'array', 'min:1'],

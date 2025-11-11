@@ -63,7 +63,6 @@ const headers = [
   { title: 'Unidad', key: 'unidad_medida' },
   { title: 'P. Compra', key: 'precio_compra' },
   { title: 'P. Venta', key: 'precio_venta' },
-  { title: 'P. Unitario', key: 'precio' },
   { title: 'IVA %', key: 'iva' },
   { title: 'P. Total (c/IVA)', key: 'precio_total' },
   { title: 'Estado', key: 'estado' },
@@ -139,6 +138,9 @@ const closeDelete = () => {
 
 const save = async () => {
   try {
+    // Calcular precio automáticamente como precio_venta + IVA
+    editedItem.value.precio = parseFloat(editedItem.value.precio_venta || 0) * (1 + parseFloat(editedItem.value.iva || 0) / 100)
+    
     if (editedIndex.value > -1) {
       const updated = await updateProducto(editedItem.value.id, editedItem.value)
       Object.assign(productos.value[editedIndex.value], updated)
@@ -212,9 +214,6 @@ onMounted(async () => {
           </template>
           <template #item.precio_venta="{ item }">
             {{ item.precio_venta != null && item.precio_venta > 0 ? formatPrice(item.precio_venta) : '-' }}
-          </template>
-          <template #item.precio="{ item }">
-            {{ formatPrice(item.precio) }}
           </template>
           <template #item.precio_total="{ item }">
             <span class="text-success font-weight-bold">
@@ -314,8 +313,8 @@ onMounted(async () => {
               </VCol>
               <VCol cols="12" md="4">
                 <VTextField
-                  v-model.number="editedItem.precio"
-                  label="Precio Unitario*"
+                  v-model.number="editedItem.iva"
+                  label="IVA %*"
                   type="number"
                   step="0.01"
                   required
@@ -323,11 +322,13 @@ onMounted(async () => {
               </VCol>
               <VCol cols="12" md="4">
                 <VTextField
-                  v-model.number="editedItem.iva"
-                  label="IVA %*"
-                  type="number"
-                  step="0.01"
-                  required
+                  :model-value="((editedItem.precio_venta || 0) * (1 + (editedItem.iva || 0) / 100)).toFixed(2)"
+                  label="Precio Total (c/IVA)"
+                  type="text"
+                  readonly
+                  disabled
+                  hint="Se calcula automáticamente: Precio Venta + IVA"
+                  persistent-hint
                 />
               </VCol>
               <VCol cols="12" md="4">

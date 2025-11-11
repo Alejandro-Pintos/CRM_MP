@@ -156,8 +156,13 @@ const editItem = (item) => {
     editedItem.value.items = item.items.map(i => ({
       producto_id: i.producto_id,
       cantidad: i.cantidad,
+      precio_compra: i.precio_compra || 0,
+      precio_venta: i.precio_venta || 0,
+      porcentaje_iva: i.porcentaje_iva || 0,
+      porcentaje_extra: i.porcentaje_extra || 0,
       precio_unitario: i.precio_unitario,
       observaciones: i.observaciones || '',
+      mostrarResultados: false,
     }))
   }
   
@@ -176,6 +181,9 @@ const openNewPedido = async () => {
   climaInfo.value = null
   pronosticoExtendido.value = []
   error.value = ''
+  busquedaProductos.value = {} // Reiniciar búsquedas de productos
+  
+  console.log('Nuevo pedido abierto:', editedItem.value)
   
   dialog.value = true
   
@@ -231,6 +239,7 @@ const agregarItem = () => {
     precio_compra: 0,
     precio_venta: 0,
     porcentaje_iva: 0,
+    porcentaje_extra: 0, // % Extra por venta al por menor
     precio_unitario: 0,
     observaciones: '',
     mostrarResultados: false,
@@ -245,13 +254,14 @@ const seleccionarProducto = (item, producto, index) => {
   // Asignar el producto seleccionado
   item.producto_id = producto.id
   
-  // Asignar precios del producto
+  // Asignar precios del producto (NO EDITABLES)
   item.precio_compra = parseFloat(producto.precio_compra || 0)
   item.precio_venta = parseFloat(producto.precio_venta || 0)
   item.porcentaje_iva = parseFloat(producto.porcentaje_iva || 0)
+  item.porcentaje_extra = 0 // Por defecto sin extra
   
-  // El precio unitario es el precio de venta (lo que se cobra al cliente)
-  item.precio_unitario = item.precio_venta
+  // Calcular precio unitario automáticamente
+  calcularPrecioUnitario(item)
   
   // Actualizar campo de búsqueda con el nombre del producto
   busquedaProductos.value[index] = `${producto.codigo} - ${producto.nombre}`
@@ -260,11 +270,20 @@ const seleccionarProducto = (item, producto, index) => {
   item.mostrarResultados = false
 }
 
+// Calcular precio unitario basado en P.Venta + IVA + % Extra
+const calcularPrecioUnitario = (item) => {
+  const precioVenta = parseFloat(item.precio_venta || 0)
+  const porcentajeIva = parseFloat(item.porcentaje_iva || 0)
+  const porcentajeExtra = parseFloat(item.porcentaje_extra || 0)
+  
+  // Precio unitario = P.Venta * (1 + IVA/100) * (1 + Extra/100)
+  const precioConIva = precioVenta * (1 + porcentajeIva / 100)
+  item.precio_unitario = precioConIva * (1 + porcentajeExtra / 100)
+}
+
 const actualizarPrecio = (item) => {
-  // Si se modifica manualmente el precio de venta, actualizar el precio unitario
-  if (item.precio_venta) {
-    item.precio_unitario = parseFloat(item.precio_venta)
-  }
+  // Recalcular precio unitario cuando cambia IVA o % Extra
+  calcularPrecioUnitario(item)
 }
 
 // Calcular total del producto (cantidad × precio_venta)
@@ -307,6 +326,9 @@ const obtenerClima = async () => {
       editedItem.value.clima_humedad = data.clima_actual.clima_humedad
       editedItem.value.clima_descripcion = data.clima_actual.clima_descripcion
     }
+    
+    // Guardar el JSON completo de la respuesta de clima
+    editedItem.value.clima_json = JSON.stringify(data)
     
     // Guardar pronóstico extendido
     if (data.pronostico && data.pronostico.length > 0) {
@@ -427,29 +449,56 @@ const autocargarDatosCliente = () => {
 
 const save = async () => {
   // Validaciones
+  console.log('Guardando pedido...', editedItem.value)
+  
   if (!editedItem.value.cliente_id) {
     error.value = 'Debe seleccionar un cliente'
     toast.warning('Debe seleccionar un cliente')
+    console.error('Cliente no seleccionado:', editedItem.value.cliente_id)
     return
   }
   
   if (editedItem.value.items.length === 0) {
     error.value = 'Debe agregar al menos un producto al pedido'
     toast.warning('Debe agregar al menos un producto al pedido')
+    console.error('Items vacíos:', editedItem.value.items)
     return
   }
   
   try {
     error.value = ''
     
+    // Limpiar items: remover campos de UI y dejar solo lo que el backend necesita
+    const dataToSend = {
+      ...editedItem.value,
+      items: editedItem.value.items.map(item => ({
+        producto_id: item.producto_id,
+        cantidad: item.cantidad,
+        precio_compra: item.precio_compra || 0,
+        precio_venta: item.precio_venta || 0,
+        porcentaje_iva: item.porcentaje_iva || 0,
+        porcentaje_extra: item.porcentaje_extra || 0,
+        precio_unitario: item.precio_unitario,
+        observaciones: item.observaciones || null,
+      }))
+      // clima_json y pronostico_extendido ya están como strings desde obtenerClima()
+    }
+    
+    // Remover el id si es null (para creación)
+    if (dataToSend.id === null) {
+      delete dataToSend.id
+    }
+    
+    console.log('Datos a enviar:', dataToSend)
+    
     if (editedIndex.value > -1) {
       // Actualizar
-      const updated = await updatePedido(editedItem.value.id, editedItem.value)
+      const updated = await updatePedido(editedItem.value.id, dataToSend)
       Object.assign(pedidos.value[editedIndex.value], updated)
       toast.success('Pedido actualizado correctamente')
     } else {
       // Crear
-      await createPedido(editedItem.value)
+      await createPedido(dataToSend)
       toast.success('Pedido creado correctamente')
     }
     close()
@@ -458,6 +507,7 @@ const save = async () => {
     const errorMsg = e.message || 'Error al guardar pedido'
     error.value = errorMsg
     toast.error(errorMsg)
+    console.error('Error completo:', e)
   }
 }
 
@@ -628,12 +678,15 @@ onMounted(() => {
                 <VSelect
                   v-model="editedItem.cliente_id"
                   :items="clientes"
-                  item-title="nombre"
                   item-value="id"
+                  item-title="nombre"
                   label="Cliente*"
                   required
                   @update:model-value="autocargarDatosCliente"
                 >
+                  <template #selection="{ item }">
+                    {{ item.raw.nombre }} {{ item.raw.apellido }}
+                  </template>
                   <template #item="{ props, item }">
                     <VListItem v-bind="props">
                       <VListItemTitle>{{ item.raw.nombre }} {{ item.raw.apellido }}</VListItemTitle>
@@ -968,23 +1021,55 @@ onMounted(() => {
                             step="0.01"
                             prefix="$"
                             density="compact"
-                            hint="Incluye ganancia+IVA"
+                            readonly
+                            hint="Precio mayorista"
                             persistent-hint
-                            @input="item.precio_unitario = item.precio_venta"
+                            bg-color="grey-lighten-4"
+                          />
+                        </VCol>
+                        <VCol cols="6" md="1.5">
+                          <VTextField
+                            v-model.number="item.porcentaje_iva"
+                            label="IVA %"
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            suffix="%"
+                            density="compact"
+                            hint="IVA"
+                            persistent-hint
+                            @input="actualizarPrecio(item)"
+                          />
+                        </VCol>
+                        <VCol cols="6" md="1.5">
+                          <VTextField
+                            v-model.number="item.porcentaje_extra"
+                            label="Extra %"
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            suffix="%"
+                            density="compact"
+                            hint="% Minorista"
+                            persistent-hint
+                            @input="actualizarPrecio(item)"
                           />
                         </VCol>
                         <VCol cols="6" md="2">
                           <VTextField
                             v-model.number="item.precio_unitario"
-                            label="P. Venta"
+                            label="Precio Unitario"
                             type="number"
                             min="0"
                             step="0.01"
                             prefix="$"
                             density="compact"
+                            readonly
                             hint="Precio final al cliente"
                             persistent-hint
-                            @input="item.precio_venta = item.precio_unitario"
+                            bg-color="info-lighten-5"
                           />
                         </VCol>
                         <VCol cols="6" md="2">

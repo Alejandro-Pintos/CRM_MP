@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { createVenta } from '@/services/ventas'
 import { getClientes } from '@/services/clientes'
@@ -48,6 +48,21 @@ const pagoActual = ref({
   metodo_pago_id: null,
   monto: 0,
 })
+
+// Modal de cheque
+const dialogCheque = ref(false)
+const datosCheque = ref({
+  numero_cheque: '',
+  fecha_cheque: new Date().toISOString().split('T')[0],
+  fecha_cobro: null,
+  observaciones_cheque: '',
+})
+
+// Diálogos de confirmación
+const dialogEliminarProducto = ref(false)
+const productoAEliminar = ref(null)
+const dialogEliminarPago = ref(false)
+const pagoAEliminar = ref(null)
 
 // Cargar pedido desde la ruta si viene de pedidos
 const pedidoId = computed(() => {
@@ -222,10 +237,21 @@ const usarPedido = (pedido) => {
   toast.info('Productos del pedido agregados')
 }
 
+const descargarPedido = () => {
+  venta.value.pedido_id = null
+  venta.value.productos = []
+  venta.value.observaciones = ''
+  pedidosPendientes.value = []
+  toast.info('Pedido descargado. Ahora puede crear una venta independiente')
+}
+
 const seleccionarProducto = (producto) => {
   productoSeleccionado.value = producto.id
   busquedaProducto.value = `${producto.nombre} (${producto.codigo})`
-  precioProducto.value = producto.precio || 0
+  // Calcular precio_venta + IVA automáticamente
+  const precioVenta = parseFloat(producto.precio_venta || 0)
+  const iva = parseFloat(producto.iva || 0)
+  precioProducto.value = precioVenta * (1 + iva / 100)
   mostrarResultadosProducto.value = false
   
   // Focus en el campo de cantidad después de seleccionar
@@ -260,7 +286,7 @@ const agregarProducto = () => {
       producto_id: productoSeleccionado.value,
       producto_nombre: producto.nombre,
       cantidad: cantidadProducto.value,
-      precio_unitario: precioProducto.value || producto.precio,
+      precio_unitario: precioProducto.value, // Ya calculado con IVA incluido
     })
   }
 
@@ -273,13 +299,31 @@ const agregarProducto = () => {
 }
 
 const eliminarProducto = (index) => {
-  venta.value.productos.splice(index, 1)
+  productoAEliminar.value = index
+  dialogEliminarProducto.value = true
+}
+
+const confirmarEliminarProducto = () => {
+  if (productoAEliminar.value !== null) {
+    venta.value.productos.splice(productoAEliminar.value, 1)
+    toast.info('Producto eliminado')
+  }
+  dialogEliminarProducto.value = false
+  productoAEliminar.value = null
+}
+
+const cancelarEliminarProducto = () => {
+  dialogEliminarProducto.value = false
+  productoAEliminar.value = null
 }
 
 const onProductoChange = () => {
   const producto = productos.value.find(p => p.id === productoSeleccionado.value)
   if (producto) {
-    precioProducto.value = producto.precio
+    // Calcular precio_venta + IVA
+    const precioVenta = parseFloat(producto.precio_venta || 0)
+    const iva = parseFloat(producto.iva || 0)
+    precioProducto.value = precioVenta * (1 + iva / 100)
   }
 }
 
@@ -299,11 +343,44 @@ const agregarPago = () => {
     return
   }
 
-  venta.value.pagos.push({
+  const metodoPago = metodosPago.value.find(m => m.id === pagoActual.value.metodo_pago_id)
+  const esCheque = metodoPago?.nombre === 'Cheque'
+
+  // Si es cheque, abrir modal para capturar datos
+  if (esCheque) {
+    // Calcular fecha de cobro por defecto (+30 días)
+    const fechaCobro = new Date()
+    fechaCobro.setDate(fechaCobro.getDate() + 30)
+    datosCheque.value.fecha_cobro = fechaCobro.toISOString().split('T')[0]
+    
+    dialogCheque.value = true
+    return
+  }
+
+  // Si NO es cheque, agregar directamente
+  finalizarAgregarPago()
+}
+
+const finalizarAgregarPago = () => {
+  const metodoPago = metodosPago.value.find(m => m.id === pagoActual.value.metodo_pago_id)
+  const esCheque = metodoPago?.nombre === 'Cheque'
+
+  const pagoData = {
     metodo_pago_id: pagoActual.value.metodo_pago_id,
     monto: parseFloat(pagoActual.value.monto),
-    metodo_nombre: metodosPago.value.find(m => m.id === pagoActual.value.metodo_pago_id)?.nombre,
-  })
+    metodo_nombre: metodoPago?.nombre,
+  }
+
+  // Si es cheque, agregar datos del cheque
+  if (esCheque) {
+    pagoData.estado_cheque = 'pendiente'
+    pagoData.numero_cheque = datosCheque.value.numero_cheque
+    pagoData.fecha_cheque = datosCheque.value.fecha_cheque
+    pagoData.fecha_cobro = datosCheque.value.fecha_cobro
+    pagoData.observaciones_cheque = datosCheque.value.observaciones_cheque
+  }
+
+  venta.value.pagos.push(pagoData)
 
   // Limpiar pago actual
   pagoActual.value = {
@@ -311,12 +388,47 @@ const agregarPago = () => {
     monto: 0,
   }
 
+  // Limpiar datos de cheque
+  datosCheque.value = {
+    numero_cheque: '',
+    fecha_cheque: new Date().toISOString().split('T')[0],
+    fecha_cobro: null,
+    observaciones_cheque: '',
+  }
+
+  // Cerrar modal
+  dialogCheque.value = false
+
   toast.success('Pago agregado')
 }
 
+const cancelarCheque = () => {
+  dialogCheque.value = false
+  datosCheque.value = {
+    numero_cheque: '',
+    fecha_cheque: new Date().toISOString().split('T')[0],
+    fecha_cobro: null,
+    observaciones_cheque: '',
+  }
+}
+
 const eliminarPago = (index) => {
-  venta.value.pagos.splice(index, 1)
-  toast.info('Pago eliminado')
+  pagoAEliminar.value = index
+  dialogEliminarPago.value = true
+}
+
+const confirmarEliminarPago = () => {
+  if (pagoAEliminar.value !== null) {
+    venta.value.pagos.splice(pagoAEliminar.value, 1)
+    toast.info('Pago eliminado')
+  }
+  dialogEliminarPago.value = false
+  pagoAEliminar.value = null
+}
+
+const cancelarEliminarPago = () => {
+  dialogEliminarPago.value = false
+  pagoAEliminar.value = null
 }
 
 const pagarTotal = () => {
@@ -330,20 +442,25 @@ const pagarTotal = () => {
     return
   }
 
-  // Agregar el pago con el total pendiente
-  venta.value.pagos.push({
-    metodo_pago_id: pagoActual.value.metodo_pago_id,
-    monto: parseFloat(saldoPendiente.value),
-    metodo_nombre: metodosPago.value.find(m => m.id === pagoActual.value.metodo_pago_id)?.nombre,
-  })
+  // Establecer el monto al total pendiente
+  pagoActual.value.monto = saldoPendiente.value
 
-  // Limpiar pago actual
-  pagoActual.value = {
-    metodo_pago_id: null,
-    monto: 0,
+  const metodoPago = metodosPago.value.find(m => m.id === pagoActual.value.metodo_pago_id)
+  const esCheque = metodoPago?.nombre === 'Cheque'
+
+  // Si es cheque, abrir modal para capturar datos
+  if (esCheque) {
+    // Calcular fecha de cobro por defecto (+30 días)
+    const fechaCobro = new Date()
+    fechaCobro.setDate(fechaCobro.getDate() + 30)
+    datosCheque.value.fecha_cobro = fechaCobro.toISOString().split('T')[0]
+    
+    dialogCheque.value = true
+    return
   }
 
-  toast.success('Pago total agregado correctamente')
+  // Si NO es cheque, agregar directamente
+  finalizarAgregarPago()
 }
 
 const guardarVenta = async () => {
@@ -403,6 +520,11 @@ const guardarVenta = async () => {
         metodo_pago_id: p.metodo_pago_id,
         monto: p.monto,
         fecha_pago: venta.value.fecha,
+        // Campos de cheque (si existen)
+        numero_cheque: p.numero_cheque,
+        fecha_cheque: p.fecha_cheque,
+        fecha_cobro: p.fecha_cobro,
+        observaciones_cheque: p.observaciones_cheque,
       })),
     }
 
@@ -482,14 +604,20 @@ onMounted(async () => {
   }
 })
 
-// Cargar pedidos pendientes cuando cambie el cliente
-watch(() => venta.value.cliente_id, (newVal) => {
-  if (newVal) {
-    fetchPedidosPendientes(newVal)
-  } else {
-    pedidosPendientes.value = []
-  }
+// Recargar clientes cuando el componente se activa (útil después de eliminar ventas en otra pestaña)
+onActivated(async () => {
+  await fetchClientes()
 })
+
+// Cargar pedidos pendientes cuando cambie el cliente (SOLO si el usuario lo solicita)
+// Ya no se carga automáticamente
+// watch(() => venta.value.cliente_id, (newVal) => {
+//   if (newVal) {
+//     fetchPedidosPendientes(newVal)
+//   } else {
+//     pedidosPendientes.value = []
+//   }
+// })
 
 // Previsualizar número cuando cambie el tipo de comprobante
 watch(() => venta.value.tipo_comprobante, (newVal) => {
@@ -590,18 +718,34 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
                 </div>
 
                 <div v-if="clienteSeleccionado" class="mt-3 pa-3 bg-surface rounded">
-                  <VRow dense>
-                    <VCol cols="12" md="4">
+                  <VRow dense align="center">
+                    <VCol cols="12" md="3">
                       <div class="text-caption text-medium-emphasis">Email</div>
                       <div class="text-body-2 font-weight-medium">{{ clienteSeleccionado.email }}</div>
                     </VCol>
-                    <VCol cols="12" md="4">
+                    <VCol cols="12" md="3">
                       <div class="text-caption text-medium-emphasis">Teléfono</div>
                       <div class="text-body-2 font-weight-medium">{{ clienteSeleccionado.telefono }}</div>
                     </VCol>
-                    <VCol cols="12" md="4">
+                    <VCol cols="12" md="3">
                       <div class="text-caption text-medium-emphasis">Límite de Crédito</div>
                       <div class="text-body-2 font-weight-medium text-success">{{ formatPrice(clienteSeleccionado.limite_credito) }}</div>
+                    </VCol>
+                    <VCol cols="12" md="3" class="text-right">
+                      <VBtn
+                        v-if="!venta.pedido_id"
+                        color="warning"
+                        variant="outlined"
+                        size="small"
+                        @click="fetchPedidosPendientes(venta.cliente_id); mostrarPedidos = 0"
+                      >
+                        <VIcon size="18" class="mr-1">ri-file-list-3-line</VIcon>
+                        Ver Pedidos Pendientes
+                      </VBtn>
+                      <VChip v-else color="success" variant="flat" size="small" closable @click:close="descargarPedido">
+                        <VIcon size="16" class="mr-1">ri-checkbox-circle-line</VIcon>
+                        Desde Pedido #{{ venta.pedido_id }}
+                      </VChip>
                     </VCol>
                   </VRow>
                 </div>
@@ -757,12 +901,14 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
                   <VCol cols="12" md="3">
                     <NumberInput
                       v-model="precioProducto"
-                      label="Precio Unitario"
+                      label="Precio Final (con IVA)"
                       prefix="$ "
                       prepend-inner-icon="ri-money-dollar-circle-line"
                       density="compact"
                       variant="outlined"
                       readonly
+                      hint="Calculado automáticamente: P. Venta + IVA"
+                      persistent-hint
                       :disabled="!productoSeleccionado"
                     />
                   </VCol>
@@ -1106,17 +1252,41 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
                     :class="{ 'border-b': index < venta.pagos.length - 1 }"
                   >
                     <template #prepend>
-                      <VAvatar color="success" variant="tonal" size="48">
-                        <VIcon size="24">ri-money-dollar-circle-fill</VIcon>
+                      <VAvatar 
+                        :color="pago.estado_cheque === 'pendiente' ? 'warning' : 'success'" 
+                        variant="tonal" 
+                        size="48"
+                      >
+                        <VIcon size="24">
+                          {{ pago.estado_cheque ? 'ri-bank-card-line' : 'ri-money-dollar-circle-fill' }}
+                        </VIcon>
                       </VAvatar>
                     </template>
                     
                     <VListItemTitle class="font-weight-medium text-body-1 mb-1">
                       {{ pago.metodo_nombre }}
+                      <VChip 
+                        v-if="pago.estado_cheque === 'pendiente'" 
+                        size="x-small" 
+                        color="warning" 
+                        class="ml-2"
+                      >
+                        Pendiente
+                      </VChip>
                     </VListItemTitle>
-                    <VListItemSubtitle class="d-flex align-center">
-                      <VIcon size="16" class="mr-1">ri-price-tag-3-line</VIcon>
-                      <span class="text-success font-weight-bold">{{ formatPrice(pago.monto) }}</span>
+                    <VListItemSubtitle>
+                      <div class="d-flex align-center mb-1">
+                        <VIcon size="16" class="mr-1">ri-price-tag-3-line</VIcon>
+                        <span class="text-success font-weight-bold">{{ formatPrice(pago.monto) }}</span>
+                      </div>
+                      <div v-if="pago.numero_cheque" class="text-caption">
+                        <VIcon size="14" class="mr-1">ri-hashtag</VIcon>
+                        Cheque Nº {{ pago.numero_cheque }}
+                        <span v-if="pago.fecha_cobro" class="ml-2">
+                          <VIcon size="14" class="mr-1">ri-calendar-check-line</VIcon>
+                          Cobro: {{ formatDate(pago.fecha_cobro) }}
+                        </span>
+                      </div>
                     </VListItemSubtitle>
                     
                     <template #append>
@@ -1264,6 +1434,163 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
         </VBtn>
       </VCol>
     </VRow>
+
+    <!-- Modal de Datos de Cheque -->
+    <VDialog v-model="dialogCheque" max-width="600" persistent>
+      <VCard>
+        <VCardTitle class="d-flex justify-space-between align-center bg-primary pa-4">
+          <div class="d-flex align-center ga-2">
+            <VIcon color="white" size="28">ri-bank-card-line</VIcon>
+            <span class="text-h6 text-white">Datos del Cheque</span>
+          </div>
+          <VBtn
+            icon
+            variant="text"
+            color="white"
+            size="small"
+            @click="cancelarCheque"
+          >
+            <VIcon>ri-close-line</VIcon>
+          </VBtn>
+        </VCardTitle>
+
+        <VCardText class="pa-6">
+          <VAlert type="info" variant="tonal" class="mb-4">
+            <VIcon>ri-information-line</VIcon>
+            Complete los datos del cheque para un mejor seguimiento
+          </VAlert>
+
+          <VRow>
+            <!-- Monto del cheque (readonly, ya establecido) -->
+            <VCol cols="12">
+              <VTextField
+                :model-value="formatPrice(pagoActual.monto)"
+                label="Monto del Cheque"
+                prepend-inner-icon="ri-money-dollar-circle-line"
+                readonly
+                variant="filled"
+                color="primary"
+                class="text-h6"
+              />
+            </VCol>
+
+            <!-- Número de Cheque -->
+            <VCol cols="12" sm="6">
+              <VTextField
+                v-model="datosCheque.numero_cheque"
+                label="Número de Cheque *"
+                prepend-inner-icon="ri-hashtag"
+                placeholder="Ej: 00112233"
+                variant="outlined"
+                :rules="[v => !!v || 'Número requerido']"
+              />
+            </VCol>
+
+            <!-- Fecha de Emisión -->
+            <VCol cols="12" sm="6">
+              <VTextField
+                v-model="datosCheque.fecha_cheque"
+                label="Fecha de Emisión *"
+                type="date"
+                prepend-inner-icon="ri-calendar-line"
+                variant="outlined"
+                :rules="[v => !!v || 'Fecha requerida']"
+              />
+            </VCol>
+
+            <!-- Fecha de Cobro -->
+            <VCol cols="12">
+              <VTextField
+                v-model="datosCheque.fecha_cobro"
+                label="Fecha de Cobro Estimada"
+                type="date"
+                prepend-inner-icon="ri-calendar-check-line"
+                variant="outlined"
+                hint="Fecha estimada en que se podrá cobrar el cheque"
+                persistent-hint
+              />
+            </VCol>
+
+            <!-- Observaciones -->
+            <VCol cols="12">
+              <VTextarea
+                v-model="datosCheque.observaciones_cheque"
+                label="Observaciones (opcional)"
+                prepend-inner-icon="ri-file-text-line"
+                placeholder="Información adicional sobre el cheque..."
+                variant="outlined"
+                rows="3"
+                auto-grow
+              />
+            </VCol>
+          </VRow>
+        </VCardText>
+
+        <VDivider />
+
+        <VCardActions class="pa-4">
+          <VSpacer />
+          <VBtn
+            variant="outlined"
+            color="secondary"
+            @click="cancelarCheque"
+          >
+            <VIcon class="mr-2">ri-close-line</VIcon>
+            Cancelar
+          </VBtn>
+          <VBtn
+            color="primary"
+            @click="finalizarAgregarPago"
+            :disabled="!datosCheque.numero_cheque || !datosCheque.fecha_cheque"
+          >
+            <VIcon class="mr-2">ri-check-line</VIcon>
+            Agregar Cheque
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <!-- Diálogo de confirmación para eliminar producto -->
+    <VDialog v-model="dialogEliminarProducto" max-width="500px">
+      <VCard>
+        <VCardTitle class="text-h5">
+          ¿Está seguro de eliminar este producto?
+        </VCardTitle>
+        <VCardText>
+          Esta acción no se puede deshacer.
+        </VCardText>
+        <VCardActions>
+          <VSpacer />
+          <VBtn color="secondary" variant="text" @click="cancelarEliminarProducto">
+            Cancelar
+          </VBtn>
+          <VBtn color="error" variant="text" @click="confirmarEliminarProducto">
+            Eliminar
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <!-- Diálogo de confirmación para eliminar pago -->
+    <VDialog v-model="dialogEliminarPago" max-width="500px">
+      <VCard>
+        <VCardTitle class="text-h5">
+          ¿Está seguro de eliminar este pago?
+        </VCardTitle>
+        <VCardText>
+          Esta acción no se puede deshacer.
+        </VCardText>
+        <VCardActions>
+          <VSpacer />
+          <VBtn color="secondary" variant="text" @click="cancelarEliminarPago">
+            Cancelar
+          </VBtn>
+          <VBtn color="error" variant="text" @click="confirmarEliminarPago">
+            Eliminar
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
   </div>
 </template>
 

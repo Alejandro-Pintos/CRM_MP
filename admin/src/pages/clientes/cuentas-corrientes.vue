@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { getClientes, getCuentaCorriente } from '@/services/clientes'
 import { toast } from '@/plugins/toast'
+import { apiFetch } from '@/services/api'
 
 const clientes = ref([])
 const loading = ref(false)
@@ -78,7 +79,8 @@ const verCuentaCorriente = async (item) => {
   selectedCliente.value = item
   try {
     const response = await getCuentaCorriente(item.id)
-    cuentaCorriente.value = Array.isArray(response) ? response : (response.data ?? [])
+    // Usar la estructura correcta de la respuesta: response.movimientos
+    cuentaCorriente.value = response.movimientos || []
     dialogCuentaCorriente.value = true
   } catch (e) {
     toast.error('Error al cargar cuenta corriente')
@@ -100,13 +102,22 @@ const formatPrice = (value) => {
 }
 
 const getDisponible = (cliente) => {
-  return (cliente.limite_credito || 0) - (cliente.saldo_actual || 0)
+  // Crédito disponible = Límite - Saldo Actual (deuda)
+  const limite = parseFloat(cliente.limite_credito) || 0
+  const saldo = parseFloat(cliente.saldo_actual) || 0
+  return limite - saldo
 }
 
 const getSaldoColor = (saldo) => {
-  if (saldo < 0) return 'error'
-  if (saldo === 0) return 'success'
-  return 'warning'
+  const saldoNum = parseFloat(saldo) || 0
+  if (saldoNum === 0) return 'success'  // Sin deuda (verde)
+  return 'error'  // Tiene deuda (rojo)
+}
+
+const getSaldoDisplay = (saldo) => {
+  // Mostrar el valor absoluto de la deuda (si es negativo, mostrarlo positivo)
+  const saldoNum = parseFloat(saldo) || 0
+  return Math.abs(saldoNum)
 }
 
 const getTipoColor = (tipo) => {
@@ -141,6 +152,24 @@ const movimientosConSaldo = computed(() => {
   })
 })
 
+const recalcularSaldos = async () => {
+  loading.value = true
+  try {
+    const response = await apiFetch('/api/v1/cuentas-corrientes/recalcular', {
+      method: 'POST'
+    })
+    
+    toast.success(`Recalculación completada: ${response.actualizados} clientes actualizados`)
+    
+    // Recargar clientes
+    await fetchClientes()
+  } catch (e) {
+    toast.error('Error al recalcular saldos: ' + (e.message || 'Error desconocido'))
+  } finally {
+    loading.value = false
+  }
+}
+
 onMounted(fetchClientes)
 </script>
 
@@ -150,16 +179,19 @@ onMounted(fetchClientes)
       <VCardTitle>
         <div class="d-flex justify-space-between align-center flex-wrap ga-4">
           <span class="text-h5">Cuentas Corrientes</span>
-          <VTextField
-            v-model="search"
-            prepend-inner-icon="mdi-magnify"
-            label="Buscar clientes"
-            single-line
-            hide-details
-            density="compact"
-            style="min-width: 300px;"
-            clearable
-          />
+          <div class="d-flex ga-2 align-center">
+            <!-- Botón de recalcular saldos removido - los saldos se calculan automáticamente -->
+            <VTextField
+              v-model="search"
+              prepend-inner-icon="mdi-magnify"
+              label="Buscar clientes"
+              single-line
+              hide-details
+              density="compact"
+              style="min-width: 300px;"
+              clearable
+            />
+          </div>
         </div>
       </VCardTitle>
 
@@ -191,6 +223,7 @@ onMounted(fetchClientes)
           <template #item.saldo_actual="{ item }">
             <VChip :color="getSaldoColor(item.saldo_actual)" size="small">
               {{ formatPrice(item.saldo_actual) }}
+              <span v-if="parseFloat(item.saldo_actual) > 0" class="ml-1">(Deuda)</span>
             </VChip>
           </template>
 
@@ -264,6 +297,7 @@ onMounted(fetchClientes)
             no-data-text="No hay movimientos registrados"
             class="elevation-1"
             density="compact"
+            show-expand
           >
             <template #item.fecha="{ item }">
               {{ new Date(item.fecha).toLocaleDateString('es-AR', { 
@@ -276,32 +310,71 @@ onMounted(fetchClientes)
             </template>
 
             <template #item.tipo="{ item }">
-              <VChip :color="getTipoColor(item.tipo)" size="small" variant="tonal">
-                {{ getTipoLabel(item.tipo) }}
+              <VChip 
+                :color="item.tipo === 'venta' ? 'primary' : 'success'" 
+                size="small" 
+                variant="flat"
+              >
+                {{ item.tipo === 'venta' ? 'Venta' : 'Pago' }}
               </VChip>
             </template>
 
+            <template #item.descripcion="{ item }">
+              <div>
+                <div class="font-weight-medium">{{ item.descripcion }}</div>
+                <div v-if="item.detalles && item.detalles.length > 0" class="text-caption text-medium-emphasis">
+                  {{ item.detalles.length }} producto(s) - Click para expandir
+                </div>
+              </div>
+            </template>
+
             <template #item.debe="{ item }">
-              <span v-if="parseFloat(item.monto) > 0" class="text-error font-weight-bold">
-                {{ formatPrice(Math.abs(item.monto)) }}
+              <span v-if="item.debe > 0" class="text-error font-weight-bold">
+                {{ formatPrice(item.debe) }}
               </span>
               <span v-else class="text-grey">-</span>
             </template>
 
             <template #item.haber="{ item }">
-              <span v-if="parseFloat(item.monto) < 0" class="text-success font-weight-bold">
-                {{ formatPrice(Math.abs(item.monto)) }}
+              <span v-if="item.haber > 0" class="text-success font-weight-bold">
+                {{ formatPrice(item.haber) }}
               </span>
               <span v-else class="text-grey">-</span>
             </template>
 
             <template #item.monto="{ item }">
               <VChip 
-                :color="parseFloat(item.saldo_acumulado) > 0 ? 'error' : parseFloat(item.saldo_acumulado) < 0 ? 'success' : 'secondary'" 
+                :color="item.saldo_acumulado > 0 ? 'error' : item.saldo_acumulado < 0 ? 'success' : 'secondary'" 
                 size="small"
               >
                 {{ formatPrice(item.saldo_acumulado) }}
               </VChip>
+            </template>
+            
+            <template #expanded-row="{ item, columns }">
+              <tr v-if="item.detalles && item.detalles.length > 0">
+                <td :colspan="columns.length" class="pa-4 bg-grey-lighten-4">
+                  <div class="text-subtitle-2 mb-2">Detalles de la venta:</div>
+                  <VTable density="compact">
+                    <thead>
+                      <tr>
+                        <th>Producto</th>
+                        <th class="text-right">Cantidad</th>
+                        <th class="text-right">Precio Unit.</th>
+                        <th class="text-right">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(detalle, idx) in item.detalles" :key="idx">
+                        <td>{{ detalle.producto }}</td>
+                        <td class="text-right">{{ detalle.cantidad }}</td>
+                        <td class="text-right">{{ formatPrice(detalle.precio_unitario) }}</td>
+                        <td class="text-right font-weight-bold">{{ formatPrice(detalle.subtotal) }}</td>
+                      </tr>
+                    </tbody>
+                  </VTable>
+                </td>
+              </tr>
             </template>
           </VDataTable>
         </VCardText>

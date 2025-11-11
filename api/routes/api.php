@@ -32,7 +32,7 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
     
     Route::apiResource('ventas', VentaController::class)
         ->parameters(['ventas' => 'venta'])
-        ->only(['index','store','show'])
+        ->only(['index','store','show','destroy'])
         ->names('ventas');
 
     // Previsualizar próximo número de comprobante
@@ -42,15 +42,31 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
     // Pagos por venta  
     Route::get('ventas/{venta}/pagos', [PagoController::class, 'index'])->name('pagos.index');
     Route::post('ventas/{venta}/pagos', [PagoController::class, 'store'])->name('pagos.store');
+    Route::post('ventas/{venta}/consolidar-pagos', [PagoController::class, 'consolidarPagos'])->name('pagos.consolidar');
+    
+    // Actualizar datos de pago/cheque
+    Route::patch('pagos/{pago}', [PagoController::class, 'update'])->name('pagos.update');
     
     // Actualizar estado de cheque
     Route::patch('pagos/{pago}/estado-cheque', [PagoController::class, 'actualizarEstadoCheque'])->name('pagos.estado_cheque');
+    
+    // Cheques pendientes y alertas
+    Route::get('cheques/pendientes', [PagoController::class, 'chequesPendientes'])->name('cheques.pendientes');
+    
+    // Historial completo de cheques (auditoría)
+    Route::get('cheques/historial', [PagoController::class, 'chequesHistorial'])->name('cheques.historial');
+    
+    // Corregir cheques históricos
+    Route::post('pagos/corregir-cheques-historicos', [PagoController::class, 'corregirChequesHistoricos'])->name('pagos.corregir_cheques');
 
     // Catálogo de métodos de pago
     Route::get('metodos-pago', [MetodoPagoController::class, 'index'])->name('metodos_pago.index');
 
     // Cuenta corriente por cliente
     Route::get('clientes/{cliente}/cuenta-corriente', [CuentaCorrienteController::class, 'show'])->name('cta_cte.show');
+    
+    // Recalcular saldos de cuenta corriente
+    Route::post('cuentas-corrientes/recalcular', [CuentaCorrienteController::class, 'recalcular'])->name('cta_cte.recalcular');
 
     // Presupuestos
     Route::post('presupuestos/enviar-email', [PresupuestoController::class, 'enviarEmail'])->name('presupuestos.enviar_email');

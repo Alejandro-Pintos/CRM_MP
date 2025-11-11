@@ -8,6 +8,9 @@ class VentaResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        // Asegurar que la relación pagos esté cargada
+        $this->resource->loadMissing('pagos');
+        
         $total = (float) ($this->total ?? 0);
 
         // Calcular pagos reales (excluyendo cuenta corriente)
@@ -19,26 +22,26 @@ class VentaResource extends JsonResource
             // Obtener ID de método "Cuenta Corriente"
             $cuentaCorrienteId = \App\Models\MetodoPago::where('nombre', 'Cuenta Corriente')->value('id');
             
-            if ($cuentaCorrienteId) {
+            if ($cuentaCorrienteId && $this->relationLoaded('pagos')) {
+                // Usar la relación cargada en lugar de hacer queries
+                $pagos = $this->pagos;
+                
                 // Pagos reales: sin cuenta corriente Y solo cheques cobrados
-                $totalPagado = (float) $this->resource->pagos()
+                $totalPagado = (float) $pagos
                     ->where('metodo_pago_id', '!=', $cuentaCorrienteId)
-                    ->where(function($query) {
-                        // Incluir si NO es cheque (estado_cheque es null)
-                        // O si ES cheque y está cobrado
-                        $query->whereNull('estado_cheque')
-                              ->orWhere('estado_cheque', 'cobrado');
+                    ->filter(function($pago) {
+                        return is_null($pago->estado_cheque) || $pago->estado_cheque === 'cobrado';
                     })
                     ->sum('monto');
                 
                 // Cheques pendientes (no cobrados aún)
-                $totalChequesPendientes = (float) $this->resource->pagos()
+                $totalChequesPendientes = (float) $pagos
                     ->where('metodo_pago_id', '!=', $cuentaCorrienteId)
                     ->where('estado_cheque', 'pendiente')
                     ->sum('monto');
                 
                 // Total a cuenta corriente (deuda)
-                $totalCuentaCorriente = (float) $this->resource->pagos()
+                $totalCuentaCorriente = (float) $pagos
                     ->where('metodo_pago_id', $cuentaCorrienteId)
                     ->sum('monto');
             } else {

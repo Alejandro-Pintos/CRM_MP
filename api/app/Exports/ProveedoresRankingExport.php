@@ -32,6 +32,7 @@ class ProveedoresRankingExport implements FromCollection, WithHeadings, ShouldAu
             ->join('detalle_venta as d', 'd.venta_id', '=', 'v.id')
             ->join('productos as p', 'p.id', '=', 'd.producto_id')
             ->leftJoin('proveedores as pr', 'pr.id', '=', 'p.proveedor_id')
+            ->whereNull('v.deleted_at') // Excluir ventas eliminadas (soft delete)
             ->when($this->from, fn($q) => $q->whereDate('v.fecha', '>=', $this->from))
             ->when($this->to,   fn($q) => $q->whereDate('v.fecha', '<=', $this->to))
             ->when(!$this->includeUnassigned, fn($q) => $q->whereNotNull('p.proveedor_id'));

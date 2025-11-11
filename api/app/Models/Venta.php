@@ -27,10 +27,9 @@ class Venta extends Model
     {
         return \Illuminate\Database\Eloquent\Casts\Attribute::make(
             get: function ($value) {
-                // Si se está accediendo desde una consulta sin relación cargada,
-                // usar el valor de la base de datos para evitar N+1
+                // SIEMPRE cargar la relación para calcular el estado real
                 if (!$this->relationLoaded('pagos')) {
-                    return $value;
+                    $this->load('pagos');
                 }
 
                 // Calcular estado real basado en pagos (excluyendo cuenta corriente)

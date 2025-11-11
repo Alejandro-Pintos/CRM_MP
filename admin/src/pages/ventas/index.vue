@@ -23,6 +23,7 @@ const nuevoPago = ref({
   // Campos para cheques
   numero_cheque: '',
   fecha_cheque: '',
+  fecha_cobro: '', // Fecha de vencimiento del cheque
   observaciones_cheque: '',
 })
 
@@ -142,6 +143,7 @@ const registrarPago = async () => {
       fecha_pago: new Date().toISOString().split('T')[0],
       numero_cheque: '',
       fecha_cheque: '',
+      fecha_cobro: '',
       observaciones_cheque: '',
     }
     toast.success('Pago registrado correctamente')
@@ -196,6 +198,31 @@ const marcarChequeRechazado = async (pago) => {
     await fetchVentas()
   } catch (e) {
     toast.error('Error al actualizar el cheque: ' + (e.message || 'Error desconocido'))
+  }
+}
+
+// Consolidar pagos de una venta
+const consolidarPagos = async () => {
+  if (!selectedVenta.value) return
+  
+  try {
+    loading.value = true
+    toast.info('Consolidando pagos...')
+    
+    const response = await apiFetch(`/api/v1/ventas/${selectedVenta.value.id}/consolidar-pagos`, {
+      method: 'POST',
+    })
+    
+    // Recargar pagos y ventas
+    const data = await getPagosVenta(selectedVenta.value.id)
+    pagosVenta.value = Array.isArray(data) ? data : (data.data ?? [])
+    await fetchVentas()
+    
+    toast.success(response.message || 'Pagos consolidados correctamente')
+  } catch (e) {
+    toast.error('Error al consolidar pagos: ' + (e.message || 'Error desconocido'))
+  } finally {
+    loading.value = false
   }
 }
 
@@ -363,14 +390,29 @@ onMounted(async () => {
     </VCard>
 
     <!-- Dialog para confirmar eliminación -->
-    <VDialog v-model="dialogDelete" max-width="500px">
+    <VDialog v-model="dialogDelete" max-width="550px">
       <VCard>
         <VCardTitle class="text-h5">
           ¿Está seguro de eliminar esta venta?
         </VCardTitle>
         <VCardText>
-          <p>Venta #{{ selectedVenta?.id }} - Cliente: {{ selectedVenta?.cliente_nombre }}</p>
-          <p><strong>Total: {{ formatPrice(selectedVenta?.total || 0) }}</strong></p>
+          <p class="mb-2">Venta #{{ selectedVenta?.id }} - Cliente: {{ selectedVenta?.cliente_nombre || 'N/A' }}</p>
+          <p class="mb-3"><strong>Total: {{ formatPrice(selectedVenta?.total || 0) }}</strong></p>
+          
+          <VAlert 
+            type="warning" 
+            variant="tonal" 
+            density="compact"
+            class="text-caption"
+          >
+            Esta acción eliminará permanentemente:
+            <ul class="mt-2 ml-4">
+              <li>La venta y sus productos</li>
+              <li>Todos los pagos asociados</li>
+              <li>Movimientos de cuenta corriente</li>
+            </ul>
+            El saldo del cliente se ajustará automáticamente.
+          </VAlert>
         </VCardText>
         <VCardActions>
           <VSpacer />
@@ -443,9 +485,48 @@ onMounted(async () => {
             </VCol>
           </VRow>
 
-          <!-- Alerta cuando está totalmente pagado -->
+          <!-- Alerta informativa si hay deuda en cuenta corriente pero está cubierta -->
           <VAlert 
-            v-if="Math.round(saldoDisponibleParaPagar) <= 0" 
+            v-if="totalCuentaCorriente > 0 && Math.round(saldoDisponibleParaPagar) <= 0"
+            type="info" 
+            variant="tonal"
+            class="mb-4"
+          >
+            <div class="d-flex align-center justify-space-between">
+              <div>
+                ℹ️ Hay <strong>{{ formatPrice(totalCuentaCorriente) }}</strong> en cuenta corriente, pero la venta está cubierta con pagos reales.
+              </div>
+              <VBtn
+                color="primary"
+                variant="tonal"
+                size="small"
+                @click="consolidarPagos"
+                prepend-icon="ri-check-double-line"
+              >
+                Consolidar Pagos
+              </VBtn>
+            </div>
+          </VAlert>
+
+          <!-- Alerta cuando hay cheques pendientes -->
+          <VAlert 
+            v-else-if="totalChequesPendientes > 0 && Math.round(saldoDisponibleParaPagar) <= 0"
+            type="warning" 
+            variant="tonal"
+            class="mb-4"
+          >
+            <div class="d-flex align-center ga-2">
+              <VIcon>ri-alarm-warning-line</VIcon>
+              <div>
+                Hay <strong>{{ formatPrice(totalChequesPendientes) }}</strong> en cheques pendientes de cobro. 
+                La venta estará completamente pagada cuando se efectivicen.
+              </div>
+            </div>
+          </VAlert>
+
+          <!-- Alerta cuando está totalmente pagado SIN deuda CC ni cheques pendientes -->
+          <VAlert 
+            v-else-if="Math.round(saldoDisponibleParaPagar) <= 0 && totalChequesPendientes === 0" 
             type="success" 
             variant="tonal"
             class="mb-4"
@@ -453,15 +534,15 @@ onMounted(async () => {
             ✅ Esta venta está completamente pagada y sin deuda pendiente
           </VAlert>
 
-          <!-- Alerta informativa si hay deuda en cuenta corriente -->
+          <!-- Alerta informativa si hay deuda en cuenta corriente pendiente -->
           <VAlert 
-            v-else-if="totalCuentaCorriente > 0 && saldoActual <= 0"
-            type="info" 
+            v-else-if="totalCuentaCorriente > 0 && saldoActual > 0"
+            type="warning" 
             variant="tonal"
             class="mb-4"
           >
-            ℹ️ Hay <strong>{{ formatPrice(totalCuentaCorriente) }}</strong> en cuenta corriente (deuda del cliente). 
-            Puede registrar pagos para cancelar esta deuda.
+            ⚠️ Hay <strong>{{ formatPrice(totalCuentaCorriente) }}</strong> en cuenta corriente (deuda del cliente). 
+            Registre pagos para cancelar esta deuda.
           </VAlert>
 
           <!-- Alerta si hay saldo sin asignar -->
@@ -528,6 +609,40 @@ onMounted(async () => {
               >
                 Registrar
               </VBtn>
+            </VCol>
+          </VRow>
+
+          <!-- Campos adicionales para cheques -->
+          <VRow v-if="metodoPagoSeleccionadoEsCheque && saldoDisponibleParaPagar > 0" class="mb-4">
+            <VCol cols="12" md="3">
+              <VTextField
+                v-model="nuevoPago.numero_cheque"
+                label="Número de Cheque"
+                placeholder="Ej: 12345678"
+              />
+            </VCol>
+            <VCol cols="12" md="3">
+              <VTextField
+                v-model="nuevoPago.fecha_cheque"
+                label="Fecha del Cheque"
+                type="date"
+              />
+            </VCol>
+            <VCol cols="12" md="3">
+              <VTextField
+                v-model="nuevoPago.fecha_cobro"
+                label="Fecha de Vencimiento"
+                type="date"
+                hint="Fecha estimada para cobrar el cheque"
+                persistent-hint
+              />
+            </VCol>
+            <VCol cols="12" md="3">
+              <VTextField
+                v-model="nuevoPago.observaciones_cheque"
+                label="Observaciones"
+                placeholder="Opcional"
+              />
             </VCol>
           </VRow>
 

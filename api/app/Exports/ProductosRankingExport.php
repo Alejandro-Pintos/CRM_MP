@@ -31,6 +31,7 @@ class ProductosRankingExport implements FromCollection, WithHeadings, ShouldAuto
         $rows = DB::table('ventas as v')
             ->join('detalle_venta as d', 'd.venta_id', '=', 'v.id')
             ->join('productos as p', 'p.id', '=', 'd.producto_id')
+            ->whereNull('v.deleted_at') // Excluir ventas eliminadas (soft delete)
             ->when($this->from, fn($q) => $q->whereDate('v.fecha', '>=', $this->from))
             ->when($this->to,   fn($q) => $q->whereDate('v.fecha', '<=', $this->to))
             ->selectRaw("

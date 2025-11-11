@@ -130,6 +130,7 @@ class ReporteController extends Controller
 
         $rows = DB::table('ventas as v')
             ->join('clientes as c', 'c.id', '=', 'v.cliente_id')
+            ->whereNull('v.deleted_at') // Excluir ventas eliminadas (soft delete)
             ->when($from, fn($q) => $q->whereDate('v.fecha','>=',$from))
             ->when($to,   fn($q) => $q->whereDate('v.fecha','<=',$to))
             ->selectRaw('v.cliente_id, c.nombre, COUNT(*) as compras, SUM(v.total) as ingreso_total')
@@ -163,6 +164,7 @@ class ReporteController extends Controller
         $rows = DB::table('ventas as v')
             ->join('detalle_venta as d', 'd.venta_id', '=', 'v.id')
             ->join('productos as p', 'p.id', '=', 'd.producto_id')
+            ->whereNull('v.deleted_at') // Excluir ventas eliminadas (soft delete)
             ->when($from, fn($q) => $q->whereDate('v.fecha','>=',$from))
             ->when($to,   fn($q) => $q->whereDate('v.fecha','<=',$to))
             ->selectRaw('
@@ -207,6 +209,7 @@ class ReporteController extends Controller
                 ->join('detalle_venta as d', 'd.venta_id', '=', 'v.id')
                 ->join('productos as p', 'p.id', '=', 'd.producto_id')
                 ->leftJoin('proveedores as pr', 'pr.id', '=', 'p.proveedor_id')
+                ->whereNull('v.deleted_at') // Excluir ventas eliminadas (soft delete)
                 ->when($from, fn($q) => $q->whereDate('v.fecha','>=',$from))
                 ->when($to,   fn($q) => $q->whereDate('v.fecha','<=',$to))
                 ->when(!$includeUnassigned, fn($q) => $q->whereNotNull('p.proveedor_id'));

@@ -87,6 +87,7 @@ class PedidoController extends Controller
                     'precio_compra' => $item['precio_compra'] ?? 0,
                     'precio_venta' => $item['precio_venta'] ?? 0,
                     'porcentaje_iva' => $item['porcentaje_iva'] ?? 0,
+                    'porcentaje_extra' => $item['porcentaje_extra'] ?? 0,
                     'precio_unitario' => $item['precio_unitario'],
                     'observaciones' => $item['observaciones'] ?? null,
                 ]);

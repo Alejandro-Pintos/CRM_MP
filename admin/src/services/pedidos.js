@@ -17,14 +17,14 @@ export async function getPedido(id) {
 export async function createPedido(data) {
   return await apiFetch(BASE_PATH, { 
     method: 'POST', 
-    body: JSON.stringify(data) 
+    body: data  // NO hacer JSON.stringify aquí, apiFetch lo hace
   })
 }
 
 export async function updatePedido(id, data) {
   return await apiFetch(`${BASE_PATH}/${id}`, { 
     method: 'PUT', 
-    body: JSON.stringify(data) 
+    body: data  // NO hacer JSON.stringify aquí, apiFetch lo hace
   })
 }
 

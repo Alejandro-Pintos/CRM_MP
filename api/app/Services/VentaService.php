@@ -6,6 +6,7 @@ use App\Models\DetalleVenta;
 use App\Models\Cliente;
 use App\Models\Pedido;
 use App\Models\Pago;
+use App\Models\MetodoPago;
 use App\Models\MovimientoCuentaCorriente;
 use App\Models\ComprobanteNumeracion;
 use Illuminate\Support\Facades\DB;
@@ -38,11 +39,18 @@ class VentaService
             }
             $total = round($total, 2);
 
-            // 3) Calcular total de pagos
+            // 3) Calcular total de pagos (EXCLUYENDO Cuenta Corriente)
             $totalPagos = 0.0;
             if (isset($payload['pagos']) && is_array($payload['pagos'])) {
                 foreach ($payload['pagos'] as $pago) {
-                    $totalPagos += (float)$pago['monto'];
+                    // Obtener el método de pago para verificar si es Cuenta Corriente
+                    $metodoPago = MetodoPago::find($pago['metodo_pago_id']);
+                    $esCuentaCorriente = $metodoPago && strtolower($metodoPago->nombre) === 'cuenta corriente';
+                    
+                    // Solo sumar si NO es Cuenta Corriente
+                    if (!$esCuentaCorriente) {
+                        $totalPagos += (float)$pago['monto'];
+                    }
                 }
             }
             $totalPagos = round($totalPagos, 2);
@@ -65,10 +73,19 @@ class VentaService
             if ($saldoPendiente > $tolerancia) {
                 if ($tieneCuentaCorriente) {
                     // Validar límite de crédito solo si queda saldo pendiente
+                    // saldo_actual = deuda actual del cliente
+                    // credito_disponible = cuánto más puede deber
                     $credito_disponible = (float)$cliente->limite_credito - (float)$cliente->saldo_actual;
-                    if ($saldoPendiente > $credito_disponible) {
+                    
+                    if ($saldoPendiente > $credito_disponible + $tolerancia) {
                         throw ValidationException::withMessages([
-                            'limite_credito' => 'El saldo pendiente de la venta supera el límite de crédito disponible.'
+                            'limite_credito' => sprintf(
+                                'El saldo pendiente ($%s) supera el límite de crédito disponible ($%s). Límite: $%s, Deuda actual: $%s',
+                                number_format($saldoPendiente, 2, ',', '.'),
+                                number_format(max(0, $credito_disponible), 2, ',', '.'),
+                                number_format($cliente->limite_credito, 2, ',', '.'),
+                                number_format($cliente->saldo_actual, 2, ',', '.')
+                            )
                         ]);
                     }
                 } else {
@@ -126,33 +143,65 @@ class VentaService
                 ]);
             }
 
-            // 8) Procesar pagos (NO crear movimientos de cuenta corriente aquí)
-            // Los pagos en el momento de la venta NO afectan la cuenta corriente
-            // porque el cliente nunca tuvo esa deuda
+            // 8) Procesar pagos (EXCLUYENDO Cuenta Corriente)
+            // Los pagos con método "Cuenta Corriente" no se registran aquí,
+            // se manejan en el paso 9 como movimiento de cuenta corriente
             if (isset($payload['pagos']) && is_array($payload['pagos'])) {
                 foreach ($payload['pagos'] as $pagoData) {
-                    Pago::create([
+                    // Verificar el tipo de método de pago
+                    $metodoPago = MetodoPago::find($pagoData['metodo_pago_id']);
+                    $esCheque = $metodoPago && strtolower($metodoPago->nombre) === 'cheque';
+                    $esCuentaCorriente = $metodoPago && strtolower($metodoPago->nombre) === 'cuenta corriente';
+                    
+                    // Si es Cuenta Corriente, NO crear el pago aquí (se maneja en paso 9)
+                    if ($esCuentaCorriente) {
+                        continue;
+                    }
+                    
+                    $nuevoPago = [
                         'venta_id' => $venta->id,
                         'metodo_pago_id' => $pagoData['metodo_pago_id'],
                         'monto' => $pagoData['monto'],
                         'fecha_pago' => $pagoData['fecha_pago'] ?? now(),
-                    ]);
+                    ];
+                    
+                    // Si es cheque, agregar campos específicos
+                    if ($esCheque) {
+                        $nuevoPago['estado_cheque'] = 'pendiente';
+                        $nuevoPago['numero_cheque'] = $pagoData['numero_cheque'] ?? null;
+                        $nuevoPago['fecha_cheque'] = $pagoData['fecha_cheque'] ?? null;
+                        $nuevoPago['observaciones_cheque'] = $pagoData['observaciones_cheque'] ?? null;
+                    }
+                    
+                    Pago::create($nuevoPago);
                 }
             }
 
             // 9) Actualizar saldo del cliente SOLO con lo que queda pendiente
-            // y crear UN SOLO movimiento de venta por el saldo pendiente
+            // y registrar el saldo pendiente como pago en "Cuenta Corriente"
             if ($saldoPendiente > $tolerancia) {
                 $cliente->saldo_actual = round((float)$cliente->saldo_actual + $saldoPendiente, 2);
                 $cliente->save();
 
-                // 9.1) Crear movimiento de venta (DEBE = aumenta deuda) solo si tiene cuenta corriente
+                // 9.1) Crear registro de pago con método "Cuenta Corriente" para el saldo pendiente
                 if ($tieneCuentaCorriente) {
+                    $cuentaCorrienteId = MetodoPago::where('nombre', 'Cuenta Corriente')->value('id');
+                    
+                    Pago::create([
+                        'venta_id' => $venta->id,
+                        'metodo_pago_id' => $cuentaCorrienteId,
+                        'monto' => $saldoPendiente,
+                        'fecha_pago' => $venta->fecha,
+                    ]);
+                    
+                    // 9.2) Crear movimiento de cuenta corriente (DEBE = aumenta deuda)
                     MovimientoCuentaCorriente::create([
                         'cliente_id' => $cliente->id,
                         'tipo' => 'venta',
                         'referencia_id' => $venta->id,
                         'monto' => abs($saldoPendiente), // Positivo = aumenta deuda
+                        'debe' => abs($saldoPendiente),  // Venta = DEBE (cliente debe dinero)
+                        'haber' => 0,
                         'fecha' => $venta->fecha,
                         'descripcion' => "Saldo pendiente venta #{$venta->id}" . ($venta->numero_comprobante ? " - {$venta->tipo_comprobante} {$venta->numero_comprobante}" : ''),
                     ]);
