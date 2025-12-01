@@ -90,8 +90,27 @@ const fetchHistorial = async () => {
   loading.value = true
   try {
     const response = await apiFetch('/api/v1/cheques/historial')
-    console.log('Historial response:', response)
-    historial.value = response.cheques || []
+  console.log('Historial response raw:', response)
+  // Mostrar conteos para detectar discrepancias entre backend y frontend
+  console.log('Historial counts: total (backend) =', response.total, 'cheques.length (frontend) =', (response.cheques || []).length)
+  historial.value = response.cheques || []
+    // Log detallado para debugging: mostrar solo campos relevantes y estructura esperada
+    try {
+      console.log('Historial parsed:', historial.value.map(h => ({
+        id: h.id,
+        numero_cheque: h.numero_cheque,
+        venta_id: h.venta_id,
+        monto: h.monto,
+        fecha_cheque: h.fecha_cheque,
+        fecha_cobro: h.fecha_cobro,
+        fecha_procesado: h.fecha_procesado,
+        estado_cheque: h.estado_cheque,
+        cliente: h.cliente ? { id: h.cliente.id, nombre: h.cliente.nombre } : null
+      })))
+    } catch (logErr) {
+      console.warn('Error formateando historial para log:', logErr)
+      console.log('Historial raw value:', historial.value)
+    }
   } catch (e) {
     console.error('Error al cargar historial:', e)
     toast.error('Error al cargar historial: ' + (e.message || 'Error desconocido'))

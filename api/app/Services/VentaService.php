@@ -179,12 +179,28 @@ class VentaService
 
             // 9) Actualizar saldo del cliente SOLO con lo que queda pendiente
             // y registrar el saldo pendiente como pago en "Cuenta Corriente"
+            \Log::info('PASO 9 - Verificar saldo pendiente', [
+                'saldoPendiente' => $saldoPendiente,
+                'tolerancia' => $tolerancia,
+                'condicion' => $saldoPendiente > $tolerancia
+            ]);
+            
             if ($saldoPendiente > $tolerancia) {
+                \Log::info('PASO 9.1 - Actualizando saldo cliente', [
+                    'saldo_anterior' => $cliente->saldo_actual,
+                    'saldo_pendiente' => $saldoPendiente,
+                    'saldo_nuevo' => (float)$cliente->saldo_actual + $saldoPendiente
+                ]);
+                
                 $cliente->saldo_actual = round((float)$cliente->saldo_actual + $saldoPendiente, 2);
                 $cliente->save();
 
                 // 9.1) Crear registro de pago con método "Cuenta Corriente" para el saldo pendiente
                 if ($tieneCuentaCorriente) {
+                    \Log::info('PASO 9.2 - Creando pago CC', [
+                        'saldoPendiente' => $saldoPendiente
+                    ]);
+                    
                     $cuentaCorrienteId = MetodoPago::where('nombre', 'Cuenta Corriente')->value('id');
                     
                     Pago::create([
@@ -192,6 +208,13 @@ class VentaService
                         'metodo_pago_id' => $cuentaCorrienteId,
                         'monto' => $saldoPendiente,
                         'fecha_pago' => $venta->fecha,
+                    ]);
+                    
+                    \Log::info('PASO 9.3 - Creando movimiento CC', [
+                        'saldoPendiente' => $saldoPendiente,
+                        'abs_saldoPendiente' => abs($saldoPendiente),
+                        'debe' => abs($saldoPendiente),
+                        'haber' => 0
                     ]);
                     
                     // 9.2) Crear movimiento de cuenta corriente (DEBE = aumenta deuda)
@@ -205,6 +228,8 @@ class VentaService
                         'fecha' => $venta->fecha,
                         'descripcion' => "Saldo pendiente venta #{$venta->id}" . ($venta->numero_comprobante ? " - {$venta->tipo_comprobante} {$venta->numero_comprobante}" : ''),
                     ]);
+                    
+                    \Log::info('PASO 9.4 - Movimiento CC creado exitosamente');
                 }
             }
 

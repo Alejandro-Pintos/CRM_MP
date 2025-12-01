@@ -61,9 +61,9 @@ class CuentaCorrienteController extends Controller
                 // Obtener detalles de la venta si existe
                 $detalles = null;
                 if ($mov->tipo === 'venta' && $mov->referencia_id) {
-                    $venta = \App\Models\Venta::withTrashed()->find($mov->referencia_id);
-                    if ($venta) {
-                        $detalles = $venta->detalles->map(function($detalle) {
+                    $venta = \App\Models\Venta::withTrashed()->with('items.producto')->find($mov->referencia_id);
+                    if ($venta && $venta->items) {
+                        $detalles = $venta->items->map(function($detalle) {
                             return [
                                 'producto' => $detalle->producto->nombre ?? 'Producto desconocido',
                                 'cantidad' => $detalle->cantidad,
