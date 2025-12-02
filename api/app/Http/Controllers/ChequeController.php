@@ -93,6 +93,8 @@ class ChequeController extends Controller
     /**
      * POST /api/v1/cheques/{cheque}/cobrar
      * Marcar cheque como cobrado.
+     * 
+     * IMPORTANTE: Cuando un cheque se cobra, el resumen de pagos de la venta debe actualizarse.
      */
     public function cobrar(Request $request, Cheque $cheque): ChequeResource
     {
@@ -105,12 +107,21 @@ class ChequeController extends Controller
             $data['fecha_cobro'] ?? null
         );
 
+        // Disparar evento para que el frontend recargue el resumen de pagos
+        // (Cache busting implícito)
+        \Log::info('Cheque cobrado - frontend debe recargar resumen', [
+            'cheque_id' => $cheque->id,
+            'venta_id' => $cheque->venta_id,
+        ]);
+
         return new ChequeResource($cheque->fresh(['cliente', 'venta']));
     }
 
     /**
      * POST /api/v1/cheques/{cheque}/rechazar
      * Marcar cheque como rechazado.
+     * 
+     * IMPORTANTE: Cuando un cheque se rechaza, el resumen de pagos de la venta debe actualizarse.
      */
     public function rechazar(Request $request, Cheque $cheque): ChequeResource
     {
@@ -122,6 +133,12 @@ class ChequeController extends Controller
             $cheque,
             $data['motivo_rechazo'] ?? null
         );
+
+        // Disparar evento para que el frontend recargue el resumen de pagos
+        \Log::info('Cheque rechazado - frontend debe recargar resumen', [
+            'cheque_id' => $cheque->id,
+            'venta_id' => $cheque->venta_id,
+        ]);
 
         return new ChequeResource($cheque->fresh(['cliente', 'venta']));
     }

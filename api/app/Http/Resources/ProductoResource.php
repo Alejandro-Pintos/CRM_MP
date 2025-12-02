@@ -25,6 +25,7 @@ class ProductoResource extends JsonResource
             'precio' => (float) $this->precio,
             'precio_total' => $this->precio_total, // Calculado dinámicamente
             'iva' => (float) $this->iva,
+            'porcentaje_iva' => (float) $this->iva, // Alias para frontend de pedidos
             'precio_con_iva' => (float) $this->precio_con_iva, // Legacy - mantener compatibilidad
             'estado' => $this->estado,
             'proveedor_id' => $this->proveedor_id,

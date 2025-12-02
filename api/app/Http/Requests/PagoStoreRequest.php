@@ -17,6 +17,7 @@ class PagoStoreRequest extends FormRequest
             // Campos de cheque (opcionales)
             'numero_cheque'  => ['nullable','string','max:100'],
             'fecha_cheque'   => ['nullable','date'],
+            'fecha_cobro'    => ['nullable','date'], // BUG 2: Agregar validación de fecha_cobro
             'fecha_vencimiento' => ['nullable','date'],
             'observaciones_cheque' => ['nullable','string','max:500'],
         ];

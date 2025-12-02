@@ -40,6 +40,10 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
     Route::get('ventas/previsualizar-numero', [VentaController::class, 'previsualizarNumero'])
         ->name('ventas.previsualizar_numero');
 
+    // Resumen de pagos de una venta (BUG 1 - calculado en backend)
+    Route::get('ventas/{venta}/pagos/resumen', [VentaController::class, 'resumenPagos'])
+        ->name('ventas.pagos.resumen');
+
     // Pagos por venta  
     Route::get('ventas/{venta}/pagos', [PagoController::class, 'index'])->name('pagos.index');
     Route::post('ventas/{venta}/pagos', [PagoController::class, 'store'])->name('pagos.store');

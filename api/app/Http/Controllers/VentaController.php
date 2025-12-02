@@ -8,6 +8,7 @@ use App\Models\Cliente;
 use App\Models\ComprobanteNumeracion;
 use App\Services\VentaService;
 use App\Services\Ventas\RegistrarVentaService;
+use App\Services\Ventas\ResumenPagosVentaService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -93,6 +94,21 @@ class VentaController extends Controller
     {
         $venta->load(['items', 'pagos']);
         return new VentaResource($venta);
+    }
+
+    /**
+     * Obtener resumen de pagos de una venta
+     * 
+     * Calcula:
+     * - Total Venta
+     * - Total Cobrado (efectivo, transferencia, etc.)
+     * - Total Cheques (independiente de estado)
+     * - Total Deuda C.C.
+     * - Saldo Pendiente
+     */
+    public function resumenPagos(Venta $venta, ResumenPagosVentaService $resumenService)
+    {
+        return response()->json($resumenService->calcular($venta));
     }
 
     /**

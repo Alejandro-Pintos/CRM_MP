@@ -33,6 +33,10 @@ export async function getPagosVenta(ventaId) {
   return await apiFetch(`${BASE_PATH}/${ventaId}/pagos`, { method: 'GET' })
 }
 
+export async function getResumenPagosVenta(ventaId) {
+  return await apiFetch(`${BASE_PATH}/${ventaId}/pagos/resumen`, { method: 'GET' })
+}
+
 export async function createPagoVenta(ventaId, data) {
   return await apiFetch(`${BASE_PATH}/${ventaId}/pagos`, {
     method: 'POST',

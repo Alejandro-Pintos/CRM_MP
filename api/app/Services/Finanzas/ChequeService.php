@@ -32,25 +32,23 @@ class ChequeService
      * Registra un cheque vinculado a una venta.
      * 
      * @param Venta $venta
-     * @param array $data [monto, numero_cheque?, fecha_cheque?, fecha_vencimiento?, observaciones?]
+     * @param array $data [monto, numero_cheque?, fecha_cheque?, fecha_vencimiento?, fecha_cobro?, observaciones?]
      * @return Cheque
      */
     public function registrarChequeDesdeVenta(Venta $venta, array $data): Cheque
     {
         return DB::transaction(function () use ($venta, $data) {
             
+            // BUG 2: Usar método centralizado para construir datos del cheque
+            $chequeData = $this->buildChequeData($data);
+            
             // INVARIANTE: El cheque siempre tiene cliente_id y venta_id
-            $cheque = Cheque::create([
+            $cheque = Cheque::create(array_merge($chequeData, [
                 'venta_id' => $venta->id,
                 'cliente_id' => $venta->cliente_id,
                 'pago_id' => $data['pago_id'] ?? null, // Vincular con el registro de pago
-                'numero' => $data['numero_cheque'] ?? null,
-                'monto' => round((float)$data['monto'], 2),
-                'fecha_emision' => $data['fecha_cheque'] ?? now(),
-                'fecha_vencimiento' => $data['fecha_vencimiento'] ?? null,
                 'estado' => 'pendiente',
-                'observaciones' => $data['observaciones'] ?? null,
-            ]);
+            ]));
 
             \Log::info('Cheque registrado desde venta', [
                 'cheque_id' => $cheque->id,
@@ -58,10 +56,39 @@ class ChequeService
                 'cliente_id' => $venta->cliente_id,
                 'monto' => $cheque->monto,
                 'numero' => $cheque->numero,
+                'fecha_emision' => $cheque->fecha_emision,
+                'fecha_vencimiento' => $cheque->fecha_vencimiento,
             ]);
 
             return $cheque;
         });
+    }
+
+    /**
+     * BUG 2: Método centralizado para construir datos de cheque.
+     * 
+     * Unifica el mapeo de campos tanto en creación como en edición.
+     * Frontend envía: fecha_cobro (fecha estimada de cobro)
+     * Backend almacena como: fecha_vencimiento (misma semántica)
+     * 
+     * @param array $input Datos del request
+     * @return array Datos normalizados para Cheque
+     */
+    private function buildChequeData(array $input): array
+    {
+        // MAPEO UNIFICADO: Frontend → Backend
+        return [
+            'numero' => $input['numero_cheque'] ?? $input['numero'] ?? null,
+            'monto' => round((float)($input['monto'] ?? 0), 2),
+            'fecha_emision' => $input['fecha_cheque'] ?? $input['fecha_emision'] ?? now(),
+            
+            // BUG 2 CRITICAL FIX: Usar fecha_cobro como fallback para fecha_vencimiento
+            // El frontend envía "fecha_cobro" (fecha estimada para cobrar)
+            // El backend lo almacena como "fecha_vencimiento"
+            'fecha_vencimiento' => $input['fecha_vencimiento'] ?? $input['fecha_cobro'] ?? null,
+            
+            'observaciones' => $input['observaciones_cheque'] ?? $input['observaciones'] ?? null,
+        ];
     }
 
     /**
@@ -166,6 +193,8 @@ class ChequeService
     /**
      * Actualiza datos administrativos de un cheque pendiente.
      * 
+     * BUG 2: Ahora usa el mismo método buildChequeData para consistencia
+     * 
      * @param Cheque $cheque
      * @param array $data
      * @return Cheque
@@ -179,11 +208,14 @@ class ChequeService
             ]);
         }
 
+        // BUG 2: Usar método centralizado con fallback a valores actuales
+        $nuevosDatos = $this->buildChequeData($data);
+        
         $cheque->update([
-            'numero' => $data['numero'] ?? $cheque->numero,
-            'fecha_emision' => $data['fecha_emision'] ?? $cheque->fecha_emision,
-            'fecha_vencimiento' => $data['fecha_vencimiento'] ?? $cheque->fecha_vencimiento,
-            'observaciones' => $data['observaciones'] ?? $cheque->observaciones,
+            'numero' => $nuevosDatos['numero'] ?? $cheque->numero,
+            'fecha_emision' => $nuevosDatos['fecha_emision'] ?? $cheque->fecha_emision,
+            'fecha_vencimiento' => $nuevosDatos['fecha_vencimiento'] ?? $cheque->fecha_vencimiento,
+            'observaciones' => $nuevosDatos['observaciones'] ?? $cheque->observaciones,
         ]);
 
         return $cheque;

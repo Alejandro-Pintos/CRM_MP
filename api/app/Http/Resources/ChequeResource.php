@@ -14,7 +14,7 @@ class ChequeResource extends JsonResource
      */
     public function toArray($request)
     {
-        // Calcular datos dinámicos SIEMPRE (no solo cuando están disponibles)
+        // BUG 2: Calcular datos dinámicos SIEMPRE (no solo cuando están disponibles)
         $diasRestantes = $this->calcularDiasRestantes();
         $estadoAlerta = $this->obtenerEstadoAlerta();
         
@@ -31,9 +31,11 @@ class ChequeResource extends JsonResource
             // Fechas (usar nombres del frontend)
             'fecha_cheque' => $this->fecha_emision?->format('Y-m-d'),
             'fecha_emision' => $this->fecha_emision?->format('Y-m-d'), // Compatibilidad
-            'fecha_cobro' => $this->fecha_vencimiento?->format('Y-m-d'), // Frontend usa fecha_cobro para vencimiento
+            
+            // BUG 2 CRITICAL: Frontend usa fecha_cobro para mostrar fecha de vencimiento
+            'fecha_cobro' => $this->fecha_vencimiento?->format('Y-m-d'), // Fecha ESTIMADA de cobro (vencimiento)
             'fecha_vencimiento' => $this->fecha_vencimiento?->format('Y-m-d'), // Compatibilidad
-            'fecha_cobro_real' => $this->fecha_cobro?->format('Y-m-d'), // Fecha real de cobro (cuando se cobró)
+            'fecha_cobro_real' => $this->fecha_cobro?->format('Y-m-d'), // Fecha REAL de cobro (cuando se cobró efectivamente)
             'fecha_procesado' => $this->fecha_cobro?->format('Y-m-d') ?? $this->fecha_rechazo?->format('Y-m-d'),
             'fecha_rechazo' => $this->fecha_rechazo?->format('Y-m-d'),
             
@@ -42,10 +44,14 @@ class ChequeResource extends JsonResource
             'observaciones' => $this->observaciones, // Compatibilidad
             'motivo_rechazo' => $this->motivo_rechazo,
             
-            // Datos calculados SIEMPRE (nunca undefined)
+            // BUG 2: Datos calculados SIEMPRE (nunca undefined)
+            // Si no hay fecha_vencimiento, dias_restantes es null
             'dias_restantes' => $diasRestantes,
             'vencido' => $this->estaVencido(),
             'proximo_a_vencer' => $this->estaProximoAVencer(),
+            
+            // BUG 2: estado_alerta ahora devuelve 'sin_fecha' si no hay fecha_vencimiento
+            // En lugar de mostrar "Sin fecha definida" en frontend
             'estado_alerta' => $estadoAlerta,
             
             // Relaciones

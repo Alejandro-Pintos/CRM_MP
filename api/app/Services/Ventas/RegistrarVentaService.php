@@ -229,15 +229,11 @@ class RegistrarVentaService
             // Si es cheque, registrar en tabla cheques (estado=pendiente)
             // El cheque NO reduce deuda hasta que se cobre
             if ($metodoPago && strtolower($metodoPago->nombre) === 'cheque') {
-                $this->chequeService->registrarChequeDesdeVenta($venta, [
+                // BUG 2: Pasar datos directamente sin mapeo
+                // ChequeService::buildChequeData se encarga del mapeo unificado
+                $this->chequeService->registrarChequeDesdeVenta($venta, array_merge($pagoData, [
                     'pago_id' => $pago->id,
-                    'monto' => $pagoData['monto'],
-                    'numero_cheque' => $pagoData['numero_cheque'] ?? null,
-                    'fecha_cheque' => $pagoData['fecha_cheque'] ?? null,
-                    // Aceptar fecha_cobro (frontend) o fecha_vencimiento (backend)
-                    'fecha_vencimiento' => $pagoData['fecha_vencimiento'] ?? $pagoData['fecha_cobro'] ?? null,
-                    'observaciones' => $pagoData['observaciones_cheque'] ?? null,
-                ]);
+                ]));
             }
         }
     }
