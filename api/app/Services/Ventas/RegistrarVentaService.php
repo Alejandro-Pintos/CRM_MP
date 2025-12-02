@@ -84,11 +84,12 @@ class RegistrarVentaService
                 $this->cuentaCorrienteService->registrarDeudaPorVenta($venta, $saldoPendiente);
             }
             
-            // 10. Determinar estado final (pagado/parcial/pendiente)
-            $venta->estado_pago = $this->determinarEstadoPago($venta);
-            $venta->save();
+            // 10. El estado_pago se calcula automáticamente mediante el Accessor del modelo
+            // No hace falta llamar a determinarEstadoPago() manualmente
+            // Solo hacemos un save() para refrescar el modelo
+            $venta->touch();
             
-            return $venta->fresh(['items', 'pagos', 'cliente']);
+            return $venta->fresh(['items', 'pagos', 'cliente', 'cheques']);
         });
     }
 
@@ -258,28 +259,54 @@ class RegistrarVentaService
         // Sumar solo pagos REALES (no CC, no cheques pendientes)
         $totalPagado = 0;
         
+        \Log::info("Determinando estado de pago", [
+            'venta_id' => $venta->id,
+            'total' => $total,
+            'cuenta_corriente_id' => $cuentaCorrienteId,
+            'cheque_id' => $chequeId,
+            'pagos_count' => $venta->pagos->count(),
+        ]);
+        
         foreach ($venta->pagos as $pago) {
             $metodoPagoId = (int)$pago->metodo_pago_id;
             
+            \Log::info("Procesando pago", [
+                'pago_id' => $pago->id,
+                'metodo_id' => $metodoPagoId,
+                'metodo_nombre' => $pago->metodoPago->nombre ?? 'N/A',
+                'monto' => $pago->monto,
+            ]);
+            
             // Excluir CC
             if ($metodoPagoId === $cuentaCorrienteId) {
+                \Log::info("Pago excluido: es Cuenta Corriente");
                 continue;
             }
             
             // Excluir cheques (porque aún no se cobraron)
             if ($metodoPagoId === $chequeId) {
+                \Log::info("Pago excluido: es Cheque");
                 continue;
             }
             
             $totalPagado += (float)$pago->monto;
+            \Log::info("Pago incluido", ['total_pagado_acumulado' => $totalPagado]);
         }
+
+        \Log::info("Cálculo final", [
+            'total_pagado' => $totalPagado,
+            'total_venta' => $total,
+        ]);
 
         // Tolerancia de 1 centavo para errores de redondeo
         if ($totalPagado >= $total - 0.01) {
+            \Log::info("Estado determinado: pagado");
             return 'pagado';
         } elseif ($totalPagado > 0.01) {
+            \Log::info("Estado determinado: parcial");
             return 'parcial';
         } else {
+            \Log::info("Estado determinado: pendiente");
             return 'pendiente';
         }
     }

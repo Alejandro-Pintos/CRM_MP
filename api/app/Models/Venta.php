@@ -22,74 +22,91 @@ class Venta extends Model
 
     /**
      * Calcular automáticamente el estado de pago basándose en pagos reales
+     * 
+     * IMPORTANTE: Los cheques NO se consideran pagos efectivos hasta que se cobran.
+     * Una venta pagada 100% con cheques pendientes tiene estado "pendiente".
      */
     protected function estadoPago(): \Illuminate\Database\Eloquent\Casts\Attribute
     {
         return \Illuminate\Database\Eloquent\Casts\Attribute::make(
             get: function ($value) {
-                // SIEMPRE cargar la relación para calcular el estado real
+                // SIEMPRE cargar las relaciones necesarias
                 if (!$this->relationLoaded('pagos')) {
-                    $this->load('pagos');
+                    $this->load('pagos.metodoPago');
+                }
+                if (!$this->relationLoaded('cheques')) {
+                    $this->load('cheques');
                 }
 
-                // Calcular estado real basado en pagos (excluyendo cuenta corriente)
                 $total = (float) $this->total;
                 
-                // Obtener ID de método "Cuenta Corriente"
+                // Obtener IDs de métodos especiales
                 $cuentaCorrienteId = MetodoPago::where('nombre', 'Cuenta Corriente')->value('id');
+                $chequeId = MetodoPago::where('nombre', 'Cheque')->value('id');
                 
-                // Calcular solo pagos reales: sin cuenta corriente Y solo cheques cobrados
-                $totalPagado = $cuentaCorrienteId 
-                    ? (float) $this->pagos
-                        ->where('metodo_pago_id', '!=', $cuentaCorrienteId)
-                        ->filter(function($pago) {
-                            // Incluir si NO es cheque O si es cheque cobrado
-                            return is_null($pago->estado_cheque) || $pago->estado_cheque === 'cobrado';
-                        })
-                        ->sum('monto')
-                    : (float) $this->pagos
-                        ->filter(function($pago) {
-                            return is_null($pago->estado_cheque) || $pago->estado_cheque === 'cobrado';
-                        })
-                        ->sum('monto');
+                // Calcular pagos REALES (excluyendo CC y Cheques)
+                $totalPagado = 0;
+                foreach ($this->pagos as $pago) {
+                    $metodoPagoId = (int)$pago->metodo_pago_id;
+                    
+                    // Excluir Cuenta Corriente
+                    if ($metodoPagoId === $cuentaCorrienteId) {
+                        continue;
+                    }
+                    
+                    // Excluir Cheques (se consideran en la tabla cheques separada)
+                    if ($metodoPagoId === $chequeId) {
+                        continue;
+                    }
+                    
+                    $totalPagado += (float)$pago->monto;
+                }
                 
-                // También obtener cuenta corriente (deuda)
+                // Sumar solo cheques COBRADOS
+                $totalChequesCobrados = (float) $this->cheques
+                    ->where('estado', Cheque::ESTADO_COBRADO)
+                    ->sum('monto');
+                
+                $totalPagado += $totalChequesCobrados;
+                
+                // Calcular deuda en Cuenta Corriente
                 $totalCuentaCorriente = $cuentaCorrienteId
                     ? (float) $this->pagos->where('metodo_pago_id', $cuentaCorrienteId)->sum('monto')
                     : 0;
                 
-                // Cheques pendientes
-                $totalChequesPendientes = (float) $this->pagos
-                    ->where('estado_cheque', 'pendiente')
+                // Calcular cheques pendientes o rechazados
+                $totalChequesPendientes = (float) $this->cheques
+                    ->whereIn('estado', [Cheque::ESTADO_PENDIENTE, Cheque::ESTADO_RECHAZADO])
                     ->sum('monto');
 
-                // LÓGICA CORRECTA:
-                // - "pagado": Todo el dinero fue recibido (sin deuda en C.C. ni cheques pendientes)
-                // - "parcial": Hay pagos, deuda o cheques pendientes
-                // - "pendiente": No hay ningún pago ni deuda
+                // LÓGICA:
+                // - "pagado": Todo cobrado (sin deuda CC ni cheques pendientes)
+                // - "parcial": Hay deuda CC o cheques pendientes
+                // - "pendiente": No hay pagos reales ni deuda
                 
-                // Si hay deuda en cuenta corriente, NUNCA está "pagado"
-                if ($totalCuentaCorriente > 0) {
-                    return 'parcial'; // Hay deuda pendiente
+                // Si hay deuda en cuenta corriente, es "parcial" (hay deuda)
+                if ($totalCuentaCorriente > 0.01) {
+                    return 'parcial';
                 }
                 
-                // Si hay cheques pendientes, tampoco está "pagado"
-                if ($totalChequesPendientes > 0) {
-                    return 'parcial'; // Hay cheques sin cobrar
+                // Si hay cheques pendientes/rechazados, es "pendiente"
+                // porque el dinero aún no ingresó
+                if ($totalChequesPendientes > 0.01) {
+                    return 'pendiente';
                 }
                 
-                // Si no hay deuda ni cheques pendientes, verificar si está pagado en efectivo
+                // Verificar pagos reales
                 $saldoSinPagar = round($total - $totalPagado, 2);
                 
                 if ($saldoSinPagar <= 0.01) {
-                    return 'pagado'; // Todo pagado y cobrado
-                } elseif ($totalPagado > 0) {
-                    return 'parcial'; // Pago parcial
+                    return 'pagado';
+                } elseif ($totalPagado > 0.01) {
+                    return 'parcial';
                 } else {
-                    return 'pendiente'; // Sin pagos
+                    return 'pendiente';
                 }
             },
-            set: fn ($value) => $value // Permite guardar manualmente si es necesario
+            set: fn ($value) => $value // Permite setear manualmente
         );
     }
 
@@ -110,6 +127,11 @@ class Venta extends Model
     public function pagos()
     {
         return $this->hasMany(Pago::class, 'venta_id');
+    }
+
+    public function cheques()
+    {
+        return $this->hasMany(Cheque::class, 'venta_id');
     }
 
     public function pedidos()
