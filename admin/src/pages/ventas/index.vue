@@ -68,7 +68,23 @@ const fetchVentas = async () => {
       ventas.value = []
     }
   } catch (e) {
-    const errorMsg = e.message || 'Error al cargar ventas'
+    console.error('Error al cargar ventas:', e)
+    
+    let errorMsg = 'Error al cargar ventas'
+    
+    // Mensaje específico según el tipo de error
+    if (e.isNetworkError) {
+      errorMsg = 'No se pudo conectar al servidor. Verifica que el backend esté corriendo en http://127.0.0.1:8000'
+    } else if (e.status === 401 || e.requiresLogin) {
+      errorMsg = 'Sesión expirada. Redirigiendo al login...'
+    } else if (e.status === 403) {
+      errorMsg = 'No tienes permisos para ver las ventas. Contacta al administrador.'
+    } else if (e.status === 500) {
+      errorMsg = `Error del servidor: ${e.message || 'Error interno'}`
+    } else if (e.message) {
+      errorMsg = e.message
+    }
+    
     error.value = errorMsg
     toast.error(errorMsg)
   } finally {
@@ -135,8 +151,18 @@ const registrarPago = async () => {
   
   try {
     await createPagoVenta(selectedVenta.value.id, nuevoPago.value)
+    
+    // Recargar pagos de la venta
     const data = await getPagosVenta(selectedVenta.value.id)
     pagosVenta.value = Array.isArray(data) ? data : (data.data ?? [])
+    
+    // CRÍTICO: Recargar la venta completa para obtener deuda_cc_pendiente actualizada
+    const ventasData = await fetchVentas()
+    const ventaActualizada = ventasData.find(v => v.id === selectedVenta.value.id)
+    if (ventaActualizada) {
+      selectedVenta.value = ventaActualizada
+    }
+    
     nuevoPago.value = {
       metodo_pago_id: null,
       monto: 0,
@@ -147,7 +173,6 @@ const registrarPago = async () => {
       observaciones_cheque: '',
     }
     toast.success('Pago registrado correctamente')
-    await fetchVentas()
   } catch (e) {
     const errorMsg = e.message || 'Error al registrar pago'
     error.value = errorMsg
@@ -261,7 +286,12 @@ const totalChequesPendientes = computed(() => {
     .reduce((sum, p) => sum + parseFloat(p.monto || 0), 0)
 })
 
-// Calcular total a cuenta corriente
+// Deuda CC pendiente (viene del backend, calculada desde movimientos)
+const deudaCCPendiente = computed(() => {
+  return parseFloat(selectedVenta.value?.deuda_cc_pendiente || 0)
+})
+
+// Total CC original (para referencia histórica)
 const totalCuentaCorriente = computed(() => {
   return pagosVenta.value
     .filter(p => p.metodo_pago?.nombre === 'Cuenta Corriente')
@@ -272,14 +302,14 @@ const totalCuentaCorriente = computed(() => {
 const saldoActual = computed(() => {
   const total = parseFloat(selectedVenta.value?.total || 0)
   const pagado = totalPagado.value
-  const cuentaCorriente = totalCuentaCorriente.value
+  const cuentaCorriente = deudaCCPendiente.value // USAR DEUDA REAL, NO TOTAL ORIGINAL
   const chequesPendientes = totalChequesPendientes.value
   return total - pagado - cuentaCorriente - chequesPendientes
 })
 
 // Saldo disponible para pagar (incluye deuda de cuenta corriente)
 const saldoDisponibleParaPagar = computed(() => {
-  return saldoActual.value + totalCuentaCorriente.value
+  return saldoActual.value + deudaCCPendiente.value // USAR DEUDA REAL
 })
 
 // Detectar si el método seleccionado es cheque
@@ -287,6 +317,17 @@ const metodoPagoSeleccionadoEsCheque = computed(() => {
   if (!nuevoPago.value.metodo_pago_id) return false
   const metodo = metodosPago.value.find(m => m.id === nuevoPago.value.metodo_pago_id)
   return metodo && metodo.nombre.toLowerCase() === 'cheque'
+})
+
+// Filtrar métodos de pago: Cuenta Corriente solo disponible si hay saldo pendiente
+const metodosPagoFiltrados = computed(() => {
+  // Si no hay saldo pendiente, no se puede "fiar" a cuenta corriente
+  if (saldoActual.value <= 0) {
+    return metodosPago.value.filter(m => 
+      m.nombre.toLowerCase() !== 'cuenta corriente'
+    )
+  }
+  return metodosPago.value
 })
 
 // Calcular saldo después de aplicar el nuevo pago (para previsualización)
@@ -454,7 +495,7 @@ onMounted(async () => {
                     </VCol>
                     <VCol cols="6" md="2">
                       <div class="text-caption">Deuda C.C.</div>
-                      <div class="text-h6 text-info">{{ formatPrice(totalCuentaCorriente) }}</div>
+                      <div class="text-h6 text-info">{{ formatPrice(selectedVenta?.deuda_cc_pendiente || 0) }}</div>
                     </VCol>
                     <VCol cols="12" md="4">
                       <div class="text-caption">Saldo Pendiente</div>
@@ -561,7 +602,7 @@ onMounted(async () => {
             <VCol cols="12" md="4">
               <VSelect
                 v-model="nuevoPago.metodo_pago_id"
-                :items="metodosPago"
+                :items="metodosPagoFiltrados"
                 item-title="nombre"
                 item-value="id"
                 label="Método de Pago"
@@ -574,23 +615,16 @@ onMounted(async () => {
                 :decimals="0"
                 prefix="$"
               />
+              <!-- Botón de "pagar todo/saldo" -->
               <VBtn 
-                v-if="saldoDisponibleParaPagar > 0"
+                v-if="saldoActual > 0"
                 size="x-small" 
                 color="info" 
                 variant="text" 
                 class="mt-1"
-                @click="nuevoPago.monto = Math.round(saldoDisponibleParaPagar)"
+                @click="nuevoPago.monto = Math.round(saldoActual)"
               >
-                <span v-if="totalCuentaCorriente > 0 && saldoActual <= 0">
-                  Pagar deuda: {{ formatPrice(totalCuentaCorriente) }}
-                </span>
-                <span v-else-if="totalCuentaCorriente > 0 && saldoActual > 0">
-                  Pagar todo ({{ formatPrice(saldoDisponibleParaPagar) }})
-                </span>
-                <span v-else>
-                  Pagar saldo completo ({{ formatPrice(saldoActual) }})
-                </span>
+                Pagar saldo completo ({{ formatPrice(saldoActual) }})
               </VBtn>
             </VCol>
             <VCol cols="12" md="3">

@@ -34,3 +34,10 @@ export async function deleteCliente(id) {
 export async function getCuentaCorriente(id) {
   return await apiFetch(`${BASE_PATH}/${id}/cuenta-corriente`, { method: 'GET' })
 }
+
+export async function registrarPagoCuentaCorriente(clienteId, data) {
+  return await apiFetch(`${BASE_PATH}/${clienteId}/cuenta-corriente/pagos`, {
+    method: 'POST',
+    body: data
+  })
+}

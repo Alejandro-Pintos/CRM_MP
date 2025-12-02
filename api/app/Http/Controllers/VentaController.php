@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 use App\Http\Requests\VentaStoreRequest;
 use App\Http\Resources\VentaResource;
 use App\Models\Venta;
+use App\Models\Cliente;
 use App\Models\ComprobanteNumeracion;
 use App\Services\VentaService;
+use App\Services\Ventas\RegistrarVentaService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class VentaController extends Controller
 {
@@ -41,31 +44,49 @@ class VentaController extends Controller
         return VentaResource::collection($query->paginate($perPage));
     }
 
-public function store(VentaStoreRequest $request, VentaService $service)
-{
-    $usuarioId = (int) optional($request->user())->id;
-
-    // 1) Crear la venta con el servicio
-    $venta = $service->crearVenta($request->validated(), $usuarioId);
-
-    // 2) Asegurarnos de tener una instancia de App\Models\Venta
-    if (is_array($venta)) {
-        // por si el service devuelve ['venta' => $venta, 'items' => [...]] o similar
-        $venta = $venta['venta'] ?? $venta[0] ?? null;
+/**
+     * Crear nueva venta usando RegistrarVentaService
+     * 
+     * El servicio se encarga de:
+     * - Calcular total desde items (backend)
+     * - Validar límite de crédito
+     * - Crear venta + items + pagos
+     * - Registrar cheques si corresponde
+     * - Registrar deuda en CC si hay saldo pendiente
+     * - Determinar estado_pago automáticamente
+     */
+    public function store(VentaStoreRequest $request, RegistrarVentaService $registrarVentaService)
+    {
+        try {
+            $validated = $request->validated();
+            
+            // Obtener cliente
+            $cliente = Cliente::findOrFail($validated['cliente_id']);
+            
+            // Ejecutar servicio de dominio
+            $venta = $registrarVentaService->ejecutar($cliente, $validated);
+            
+            // Retornar recurso con código 201
+            return (new VentaResource($venta))
+                ->response()
+                ->setStatusCode(201)
+                ->header('Location', route('ventas.show', ['venta' => $venta->id]));
+                
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Error de validación',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Error al crear venta: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'message' => 'Error al crear la venta: ' . $e->getMessage()
+            ], 500);
+        }
     }
-    if (! $venta instanceof \App\Models\Venta) {
-        abort(500, 'VentaService debe devolver una instancia de App\\Models\\Venta.');
-    }
-
-    // 3) Cargar relaciones para que el Resource tenga todo listo (evita N+1)
-    $venta->loadMissing(['items', 'cliente', 'pagos']);
-
-    // 4) Devolver 201 + Location con el Resource
-    return (new \App\Http\Resources\VentaResource($venta))
-        ->response()
-        ->setStatusCode(201)
-        ->header('Location', route('ventas.show', ['venta' => $venta->id]));
-}
 
 
     public function show(Venta $venta)

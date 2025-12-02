@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { getClientes, getCuentaCorriente } from '@/services/clientes'
+import { getClientes, getCuentaCorriente, registrarPagoCuentaCorriente } from '@/services/clientes'
+import { getMetodosPago } from '@/services/metodos-pago'
 import { toast } from '@/plugins/toast'
 import { apiFetch } from '@/services/api'
 
@@ -10,7 +11,37 @@ const error = ref('')
 const dialogCuentaCorriente = ref(false)
 const selectedCliente = ref(null)
 const cuentaCorriente = ref([])
+const cuentaCorrienteData = ref(null)
 const search = ref('')
+const metodosPago = ref([])
+const loadingPago = ref(false)
+
+// Formulario de pago
+const formPago = ref({
+  monto: 0,
+  metodo_pago_id: null,
+  fecha_pago: new Date().toISOString().split('T')[0],
+  observaciones: ''
+})
+
+// Filtrar métodos de pago (excluir "Cuenta Corriente")
+const metodosPagoFiltrados = computed(() => {
+  return metodosPago.value.filter(metodo => 
+    metodo.nombre.toLowerCase() !== 'cuenta corriente'
+  )
+})
+
+// Saldo actual del cliente seleccionado
+const saldoActualCliente = computed(() => {
+  return cuentaCorrienteData.value?.cliente?.saldo_actual || 0
+})
+
+// Crédito disponible del cliente seleccionado
+const creditoDisponible = computed(() => {
+  const limite = cuentaCorrienteData.value?.cliente?.limite_credito || 0
+  const saldo = saldoActualCliente.value
+  return limite - saldo
+})
 
 // Filtrar clientes que tienen cuenta corriente (saldo_actual != 0 o límite_credito > 0)
 const clientesConCuentaCorriente = computed(() => {
@@ -79,8 +110,14 @@ const verCuentaCorriente = async (item) => {
   selectedCliente.value = item
   try {
     const response = await getCuentaCorriente(item.id)
+    // Guardar toda la respuesta
+    cuentaCorrienteData.value = response
     // Usar la estructura correcta de la respuesta: response.movimientos
     cuentaCorriente.value = response.movimientos || []
+    
+    // Prellenar el formulario con el saldo total
+    formPago.value.monto = response.cliente?.saldo_actual || 0
+    
     dialogCuentaCorriente.value = true
   } catch (e) {
     toast.error('Error al cargar cuenta corriente')
@@ -92,6 +129,84 @@ const closeCuentaCorriente = () => {
   dialogCuentaCorriente.value = false
   selectedCliente.value = null
   cuentaCorriente.value = []
+  cuentaCorrienteData.value = null
+  resetFormPago()
+}
+
+const resetFormPago = () => {
+  formPago.value = {
+    monto: 0,
+    metodo_pago_id: null,
+    fecha_pago: new Date().toISOString().split('T')[0],
+    observaciones: ''
+  }
+}
+
+const setMontoTotal = () => {
+  formPago.value.monto = saldoActualCliente.value
+}
+
+const registrarPago = async () => {
+  // Validaciones frontend
+  if (formPago.value.monto <= 0) {
+    toast.error('El monto debe ser mayor a cero')
+    return
+  }
+  
+  if (formPago.value.monto > saldoActualCliente.value) {
+    toast.error(`El monto no puede ser mayor al saldo actual (${formatPrice(saldoActualCliente.value)})`)
+    return
+  }
+  
+  if (!formPago.value.metodo_pago_id) {
+    toast.error('Debe seleccionar un método de pago')
+    return
+  }
+  
+  loadingPago.value = true
+  try {
+    const response = await registrarPagoCuentaCorriente(selectedCliente.value.id, formPago.value)
+    
+    // Actualizar los datos locales
+    if (response.movimiento) {
+      cuentaCorriente.value.push(response.movimiento)
+    }
+    
+    if (response.cliente) {
+      // Actualizar datos del cliente en la respuesta
+      cuentaCorrienteData.value.cliente.saldo_actual = response.cliente.saldo_actual
+      
+      // Actualizar en la lista de clientes también
+      const clienteIdx = clientes.value.findIndex(c => c.id === selectedCliente.value.id)
+      if (clienteIdx !== -1) {
+        clientes.value[clienteIdx].saldo_actual = response.cliente.saldo_actual
+      }
+      
+      // Actualizar selectedCliente
+      selectedCliente.value.saldo_actual = response.cliente.saldo_actual
+    }
+    
+    toast.success('Pago registrado exitosamente')
+    resetFormPago()
+    
+    // Recargar la cuenta corriente para tener datos frescos
+    await verCuentaCorriente(selectedCliente.value)
+  } catch (e) {
+    const errorMsg = e.message || 'Error al registrar el pago'
+    toast.error(errorMsg)
+    console.error('Error al registrar pago:', e)
+  } finally {
+    loadingPago.value = false
+  }
+}
+
+const fetchMetodosPago = async () => {
+  try {
+    const response = await getMetodosPago()
+    metodosPago.value = Array.isArray(response) ? response : (response.data || [])
+  } catch (e) {
+    console.error('Error al cargar métodos de pago:', e)
+  }
 }
 
 const formatPrice = (value) => {
@@ -170,7 +285,10 @@ const recalcularSaldos = async () => {
   }
 }
 
-onMounted(fetchClientes)
+onMounted(() => {
+  fetchClientes()
+  fetchMetodosPago()
+})
 </script>
 
 <template>
@@ -268,15 +386,15 @@ onMounted(fetchClientes)
               <VCard variant="tonal" color="info">
                 <VCardText>
                   <div class="text-caption">Límite de Crédito</div>
-                  <div class="text-h6">{{ formatPrice(selectedCliente?.limite_credito || 0) }}</div>
+                  <div class="text-h6">{{ formatPrice(cuentaCorrienteData?.cliente?.limite_credito || 0) }}</div>
                 </VCardText>
               </VCard>
             </VCol>
             <VCol cols="12" md="4">
-              <VCard variant="tonal" :color="getSaldoColor(selectedCliente?.saldo_actual || 0)">
+              <VCard variant="tonal" :color="getSaldoColor(saldoActualCliente)">
                 <VCardText>
-                  <div class="text-caption">Saldo Actual</div>
-                  <div class="text-h6">{{ formatPrice(selectedCliente?.saldo_actual || 0) }}</div>
+                  <div class="text-caption">Saldo Actual (Deuda)</div>
+                  <div class="text-h6">{{ formatPrice(saldoActualCliente) }}</div>
                 </VCardText>
               </VCard>
             </VCol>
@@ -284,7 +402,7 @@ onMounted(fetchClientes)
               <VCard variant="tonal" color="success">
                 <VCardText>
                   <div class="text-caption">Crédito Disponible</div>
-                  <div class="text-h6">{{ formatPrice(getDisponible(selectedCliente || {})) }}</div>
+                  <div class="text-h6">{{ formatPrice(creditoDisponible) }}</div>
                 </VCardText>
               </VCard>
             </VCol>
@@ -377,6 +495,95 @@ onMounted(fetchClientes)
               </tr>
             </template>
           </VDataTable>
+
+          <!-- Sección: Registrar Pago a Cuenta Corriente -->
+          <VCard class="mt-6" v-if="saldoActualCliente > 0" variant="tonal" color="success">
+            <VCardTitle class="d-flex align-center">
+              <VIcon class="mr-2">ri-money-dollar-circle-line</VIcon>
+              Registrar Pago a Cuenta Corriente
+            </VCardTitle>
+            <VCardText>
+              <VRow>
+                <VCol cols="12" md="6">
+                  <VTextField
+                    v-model.number="formPago.monto"
+                    label="Monto a pagar"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    :max="saldoActualCliente"
+                    prepend-inner-icon="ri-money-dollar-circle-line"
+                    :hint="`Saldo actual: ${formatPrice(saldoActualCliente)}`"
+                    persistent-hint
+                    :error-messages="formPago.monto > saldoActualCliente ? 'El monto no puede ser mayor al saldo actual' : ''"
+                  >
+                    <template #append>
+                      <VBtn
+                        size="small"
+                        variant="text"
+                        color="primary"
+                        @click="setMontoTotal"
+                      >
+                        Pagar total
+                      </VBtn>
+                    </template>
+                  </VTextField>
+                </VCol>
+                
+                <VCol cols="12" md="6">
+                  <VSelect
+                    v-model="formPago.metodo_pago_id"
+                    :items="metodosPagoFiltrados"
+                    item-title="nombre"
+                    item-value="id"
+                    label="Método de pago"
+                    prepend-inner-icon="ri-bank-card-line"
+                    hint="No se puede pagar con Cuenta Corriente"
+                    persistent-hint
+                  />
+                </VCol>
+
+                <VCol cols="12" md="6">
+                  <VTextField
+                    v-model="formPago.fecha_pago"
+                    label="Fecha de pago"
+                    type="date"
+                    prepend-inner-icon="ri-calendar-line"
+                  />
+                </VCol>
+
+                <VCol cols="12" md="6">
+                  <VTextField
+                    v-model="formPago.observaciones"
+                    label="Observaciones (opcional)"
+                    prepend-inner-icon="ri-message-2-line"
+                    placeholder="Ej: Pago parcial de deuda"
+                  />
+                </VCol>
+
+                <VCol cols="12">
+                  <div class="d-flex justify-end ga-2">
+                    <VBtn
+                      color="success"
+                      :loading="loadingPago"
+                      :disabled="!formPago.metodo_pago_id || formPago.monto <= 0 || formPago.monto > saldoActualCliente"
+                      @click="registrarPago"
+                      prepend-icon="ri-check-line"
+                    >
+                      Registrar pago de {{ formatPrice(formPago.monto) }}
+                    </VBtn>
+                  </div>
+                </VCol>
+              </VRow>
+            </VCardText>
+          </VCard>
+
+          <VAlert v-else-if="saldoActualCliente === 0" type="success" class="mt-6">
+            <div class="d-flex align-center">
+              <VIcon class="mr-2">ri-check-line</VIcon>
+              <span>El cliente no tiene deuda pendiente en cuenta corriente</span>
+            </div>
+          </VAlert>
         </VCardText>
 
         <VCardActions>

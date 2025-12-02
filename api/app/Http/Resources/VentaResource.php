@@ -66,6 +66,17 @@ class VentaResource extends JsonResource
         // Saldo pendiente = lo que falta pagar en efectivo/real
         // (el total menos pagos reales menos lo que ya está en cuenta corriente como deuda)
         $saldoPendiente = round($total - $totalPagado - $totalCuentaCorriente, 2);
+        
+        // CRÍTICO: Calcular deuda CC REAL desde movimientos de cuenta corriente
+        $deudaCCReal = 0.0;
+        try {
+            $service = new \App\Services\CuentaCorrienteService();
+            $deudaCCReal = $service->calcularDeudaCCVenta($this->id);
+        } catch (\Throwable $e) {
+            \Log::error("Error calculando deuda CC de venta #{$this->id}: " . $e->getMessage());
+            // Fallback: usar el total de pagos CC como aproximación
+            $deudaCCReal = $totalCuentaCorriente;
+        }
 
         return [
             'id'              => $this->id,
@@ -88,8 +99,9 @@ class VentaResource extends JsonResource
             'total'           => $total,
             'total_pagado'    => round($totalPagado, 2),
             'total_cheques_pendientes' => round($totalChequesPendientes, 2),
-            'total_cuenta_corriente' => round($totalCuentaCorriente, 2),
-            'saldo_pendiente' => $saldoPendiente, // Siempre debería ser = total_cuenta_corriente
+            'total_cuenta_corriente' => round($totalCuentaCorriente, 2), // Monto ORIGINAL asignado a CC
+            'deuda_cc_pendiente' => round($deudaCCReal, 2), // Deuda CC ACTUAL (después de pagos)
+            'saldo_pendiente' => $saldoPendiente,
             'estado_pago'     => $this->estado_pago,
             'tipo_comprobante' => $this->tipo_comprobante,
             'numero_comprobante' => $this->numero_comprobante,

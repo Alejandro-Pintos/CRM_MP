@@ -42,21 +42,9 @@ class CuentaCorrienteController extends Controller
         ]);
 
         $movimientos = $movimientosRaw->map(function($mov) {
-                $monto = (float)$mov->monto;
-                
-                // Para ventas: monto positivo = DEBE (aumenta deuda)
-                // Para pagos: monto positivo = HABER (reduce deuda)
-                $debe = 0;
-                $haber = 0;
-                $montoParaSaldo = 0;
-                
-                if ($mov->tipo === 'venta') {
-                    $debe = abs($monto);
-                    $montoParaSaldo = abs($monto);
-                } else { // pago
-                    $haber = abs($monto);
-                    $montoParaSaldo = -abs($monto);
-                }
+                // Usar campos debe/haber directamente de BD (no recalcular)
+                $debe = (float)$mov->debe;
+                $haber = (float)$mov->haber;
                 
                 // Obtener detalles de la venta si existe
                 $detalles = null;
@@ -82,13 +70,12 @@ class CuentaCorrienteController extends Controller
                     'descripcion'   => $mov->descripcion,
                     'debe'          => $debe,
                     'haber'         => $haber,
-                    'monto'         => $montoParaSaldo,
                     'detalles'      => $detalles,
                 ];
             })
             ->toArray();
 
-        // Calcular saldo acumulado
+        // Calcular saldo acumulado usando debe - haber
         $saldo = 0.0;
         $totalDebe = 0.0;
         $totalHaber = 0.0;
@@ -96,10 +83,15 @@ class CuentaCorrienteController extends Controller
         foreach ($movimientos as &$m) {
             $totalDebe += $m['debe'];
             $totalHaber += $m['haber'];
-            $saldo += $m['monto'];
+            
+            // DEBE incrementa, HABER decrementa
+            $saldo += $m['debe'] - $m['haber'];
             $m['saldo_acumulado'] = round($saldo, 2);
         }
         unset($m);
+
+        // Obtener el saldo calculado en tiempo real
+        $saldoCalculado = $cliente->calcularSaldoReal();
 
         return response()->json([
             'cliente' => [
@@ -107,7 +99,8 @@ class CuentaCorrienteController extends Controller
                 'nombre'          => $cliente->nombre,
                 'apellido'        => $cliente->apellido,
                 'limite_credito'  => (float)$cliente->limite_credito,
-                'saldo_actual'    => (float)$cliente->saldo_actual,
+                'saldo_actual'    => $saldoCalculado, // Usar saldo calculado
+                'saldo_bd'        => (float)$cliente->saldo_actual, // Para referencia
             ],
             'filtros' => [
                 'desde' => $desde?->toDateString(),
@@ -124,39 +117,21 @@ class CuentaCorrienteController extends Controller
 
     /**
      * POST /api/v1/cuentas-corrientes/recalcular
-     * Recalcula el saldo_actual de todos los clientes basándose en los pagos registrados como "Cuenta Corriente"
+     * Recalcula el saldo_actual de todos los clientes basándose en sus movimientos de cuenta corriente
      */
     public function recalcular(Request $request)
     {
         $clientes = Cliente::all();
         $actualizados = 0;
         $errores = [];
-        $cuentaCorrienteId = \App\Models\MetodoPago::where('nombre', 'Cuenta Corriente')->value('id');
 
         foreach ($clientes as $cliente) {
             try {
-                // El saldo_actual debería ser igual a la suma de todos los registros de "Cuenta Corriente"
-                // que aún no han sido pagados con métodos reales
+                // Usar el método del modelo para recalcular
+                $actualizado = $cliente->recalcularSaldo();
                 
-                $totalCuentaCorriente = Pago::whereHas('venta', function($q) use ($cliente) {
-                        $q->where('cliente_id', $cliente->id);
-                    })
-                    ->where('metodo_pago_id', $cuentaCorrienteId)
-                    ->sum('monto');
-                
-                // El saldo debería ser el total en cuenta corriente (deuda pendiente)
-                // Si es 0, significa que no hay deuda
-                // Si es negativo, algo está mal (no debería pasar)
-                $saldoCalculado = round((float)$totalCuentaCorriente, 2);
-                
-                // Actualizar solo si hay diferencia significativa
-                if (abs($cliente->saldo_actual - $saldoCalculado) > 0.01) {
-                    $saldoAnterior = $cliente->saldo_actual;
-                    $cliente->saldo_actual = $saldoCalculado;
-                    $cliente->save();
-                    
+                if ($actualizado) {
                     $actualizados++;
-                    \Log::info("Cliente #{$cliente->id} ({$cliente->nombre} {$cliente->apellido}) actualizado: {$saldoAnterior} → {$saldoCalculado}");
                 }
             } catch (\Exception $e) {
                 $errores[] = [
@@ -175,6 +150,84 @@ class CuentaCorrienteController extends Controller
             'sin_cambios' => $clientes->count() - $actualizados - count($errores),
             'errores' => $errores
         ]);
+    }
+
+    /**
+     * POST /api/v1/clientes/{cliente}/cuenta-corriente/pagos
+     * Registra un pago de cuenta corriente (reduce la deuda del cliente)
+     * DISTRIBUYE el pago FIFO entre las ventas pendientes
+     */
+    public function registrarPago(Request $request, Cliente $cliente)
+    {
+        $request->validate([
+            'monto' => 'required|numeric|gt:0',
+            'metodo_pago_id' => 'required|integer|exists:metodos_pago,id',
+            'fecha_pago' => 'nullable|date',
+            'observaciones' => 'nullable|string|max:500',
+        ]);
+
+        // Validación: No se puede seleccionar "Cuenta Corriente" como método de pago
+        $metodoPago = \App\Models\MetodoPago::find($request->metodo_pago_id);
+        if (!$metodoPago) {
+            return response()->json([
+                'message' => 'Método de pago no válido'
+            ], 422);
+        }
+        
+        if (strtolower($metodoPago->nombre) === 'cuenta corriente') {
+            return response()->json([
+                'message' => 'No se puede pagar una cuenta corriente con cuenta corriente. Seleccione efectivo, transferencia, cheque u otro método.'
+            ], 422);
+        }
+        
+        // Validación: El monto no puede ser mayor al saldo actual
+        $saldoActual = $cliente->calcularSaldoReal();
+        $monto = round((float)$request->monto, 2);
+        
+        if ($monto > $saldoActual + 0.01) {
+            return response()->json([
+                'message' => sprintf(
+                    'El monto ($%s) no puede ser mayor al saldo actual ($%s)',
+                    number_format($monto, 2),
+                    number_format($saldoActual, 2)
+                )
+            ], 422);
+        }
+        
+        // Usar el servicio para distribuir el pago FIFO
+        $service = new \App\Services\CuentaCorrienteService();
+        
+        $resultado = $service->registrarPagoCliente(
+            clienteId: $cliente->id,
+            montoPago: $monto,
+            fecha: $request->fecha_pago ?? now()->format('Y-m-d'),
+            metodoPagoId: $request->metodo_pago_id,
+            observaciones: $request->observaciones
+        );
+        
+        $clienteActualizado = $resultado['cliente'];
+        
+        \Log::info("Pago de cuenta corriente registrado con distribución FIFO", [
+            'cliente_id' => $cliente->id,
+            'monto' => $monto,
+            'metodo_pago' => $metodoPago->nombre,
+            'saldo_anterior' => $saldoActual,
+            'saldo_nuevo' => $clienteActualizado->saldo_actual,
+            'ventas_afectadas' => $resultado['ventas_afectadas'],
+            'movimientos_creados' => count($resultado['movimientos_creados']),
+        ]);
+        
+        return response()->json([
+            'message' => 'Pago registrado exitosamente',
+            'movimientos_creados' => count($resultado['movimientos_creados']),
+            'ventas_afectadas' => $resultado['ventas_afectadas'],
+            'cliente' => [
+                'id' => $clienteActualizado->id,
+                'saldo_actual' => (float)$clienteActualizado->saldo_actual,
+                'limite_credito' => (float)$clienteActualizado->limite_credito,
+                'credito_disponible' => (float)$clienteActualizado->limite_credito - (float)$clienteActualizado->saldo_actual,
+            ],
+        ], 201);
     }
 
     /**

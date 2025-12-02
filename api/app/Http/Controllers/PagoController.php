@@ -6,7 +6,9 @@ use App\Http\Resources\PagoResource;
 use App\Models\Pago;
 use App\Models\Venta;
 use App\Services\PagoService;
+use App\Services\Ventas\RegistrarPagoVentaService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class PagoController extends Controller
 {
@@ -24,10 +26,40 @@ class PagoController extends Controller
         );
     }
 
-    public function store(PagoStoreRequest $request, Venta $venta, PagoService $service)
+    /**
+     * Registrar pago de venta usando RegistrarPagoVentaService
+     * 
+     * El servicio se encarga de:
+     * - Validar que no se pague más de la deuda actual
+     * - Crear pago + registrar cheque si corresponde
+     * - Aplicar pago a CC si la venta tiene deuda en CC
+     * - Actualizar estado_pago de la venta
+     * - Actualizar saldo_actual del cliente
+     */
+    public function store(PagoStoreRequest $request, Venta $venta, RegistrarPagoVentaService $registrarPagoService)
     {
-        $pago = $service->registrarPago($venta, $request->validated());
-        return (new PagoResource($pago))->response()->setStatusCode(201);
+        try {
+            $pago = $registrarPagoService->ejecutar($venta, $request->validated());
+            
+            return (new PagoResource($pago->load('metodoPago')))
+                ->response()
+                ->setStatusCode(201);
+                
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Error de validación',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Error al registrar pago: ' . $e->getMessage(), [
+                'venta_id' => $venta->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'message' => 'Error al registrar el pago: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -61,6 +93,13 @@ class PagoController extends Controller
 
     /**
      * Actualizar el estado de un cheque (cobrado/rechazado)
+     * 
+     * IMPORTANTE: Los cheques son un método de pago independiente.
+     * Al marcar un cheque como cobrado o rechazado, NO se debe:
+     * - Crear movimientos de cuenta corriente
+     * - Modificar el saldo_actual del cliente (ese campo es solo para deuda de cuenta corriente)
+     * 
+     * Solo se actualiza el estado del cheque para reflejar su situación.
      */
     public function actualizarEstadoCheque(Request $request, Pago $pago)
     {
@@ -79,7 +118,6 @@ class PagoController extends Controller
 
         return \DB::transaction(function () use ($request, $pago) {
             $venta = $pago->venta;
-            $cliente = \App\Models\Cliente::lockForUpdate()->findOrFail($venta->cliente_id);
             
             $estadoAnterior = $pago->estado_cheque;
             $nuevoEstado = $request->estado_cheque;
@@ -93,37 +131,13 @@ class PagoController extends Controller
             
             $pago->save();
 
-            // Si el cheque fue COBRADO, reducir el saldo del cliente
+            // Logging para auditoría
             if ($nuevoEstado === 'cobrado') {
-                $monto = (float)$pago->monto;
-                
-                // Reducir saldo actual (lógica original)
-                $cliente->saldo_actual = round((float)$cliente->saldo_actual - $monto, 2);
-                $cliente->save();
-
-                // Crear movimiento de cuenta corriente
-                if ((float)$cliente->limite_credito > 0) {
-                    \App\Models\MovimientoCuentaCorriente::create([
-                        'cliente_id'   => $cliente->id,
-                        'tipo'         => 'pago',
-                        'referencia_id'=> $pago->id,
-                        'monto'        => -abs($monto), // Negativo = reduce deuda
-                        'debe'         => 0,
-                        'haber'        => abs($monto),  // Pago = HABER (reduce deuda)
-                        'fecha'        => $pago->fecha_cobro,
-                        'descripcion'  => "Cobro de cheque #{$pago->numero_cheque} - Venta #{$venta->id}",
-                    ]);
-                }
-
-                \Log::info("Cheque cobrado: Pago #{$pago->id}, Cliente #{$cliente->id}, Monto: {$monto}");
+                \Log::info("Cheque cobrado: Pago #{$pago->id}, Cheque #{$pago->numero_cheque}, Venta #{$venta->id}, Monto: {$pago->monto}");
             }
             
-            // Si el cheque fue RECHAZADO, el dinero sigue pendiente
             if ($nuevoEstado === 'rechazado') {
-                \Log::warning("Cheque rechazado: Pago #{$pago->id}, Venta #{$venta->id}, Motivo: {$request->observaciones_cheque}");
-                
-                // Opcional: Podrías incrementar el saldo_actual si quieres que vuelva a deuda
-                // Por ahora, el cheque rechazado simplemente queda marcado como tal
+                \Log::warning("Cheque rechazado: Pago #{$pago->id}, Cheque #{$pago->numero_cheque}, Venta #{$venta->id}, Motivo: {$request->observaciones_cheque}");
             }
 
             // Recargar la venta para actualizar el estado
@@ -357,6 +371,10 @@ class PagoController extends Controller
                 \App\Models\MovimientoCuentaCorriente::where('referencia_id', $pago->id)
                     ->where('tipo', 'pago')
                     ->delete();
+                
+                // Recalcular saldo del cliente basado en movimientos
+                $cliente->refresh();
+                $cliente->recalcularSaldo();
                 
                 $corregidos[] = [
                     'pago_id' => $pago->id,

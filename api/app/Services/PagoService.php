@@ -50,6 +50,14 @@ class PagoService
             
             // Validaciones
             if ($esCuentaCorriente) {
+                // VALIDACIÓN CRÍTICA: Cuenta Corriente solo se usa para FIAR saldo pendiente
+                // NO para pagar deuda ya existente en CC
+                if ($saldoSinAsignar <= 0) {
+                    throw ValidationException::withMessages([
+                        'metodo_pago_id' => 'No hay saldo pendiente de la venta para asignar a cuenta corriente. Use el método "Cuenta Corriente" solo para fiar saldo sin asignar, no para pagar deuda existente.'
+                    ]);
+                }
+                
                 // Si es cuenta corriente, solo puede asignar el saldo sin asignar
                 if ($monto > $saldoSinAsignar + 0.01) {
                     throw ValidationException::withMessages([
@@ -59,6 +67,25 @@ class PagoService
                             number_format($saldoSinAsignar, 2)
                         )
                     ]);
+                }
+                
+                // Validar límite de crédito disponible
+                if ((float)$cliente->limite_credito > 0) {
+                    $saldoActual = (float)$cliente->saldo_actual;
+                    $nuevoSaldo = $saldoActual + $monto;
+                    $limiteCredito = (float)$cliente->limite_credito;
+                    
+                    if ($nuevoSaldo > $limiteCredito) {
+                        throw ValidationException::withMessages([
+                            'monto' => sprintf(
+                                'El monto ($%s) supera el crédito disponible. Saldo actual: $%s, Límite: $%s, Disponible: $%s',
+                                number_format($monto, 2),
+                                number_format($saldoActual, 2),
+                                number_format($limiteCredito, 2),
+                                number_format($limiteCredito - $saldoActual, 2)
+                            )
+                        ]);
+                    }
                 }
             } else {
                 // Si es pago real, puede pagar: saldo sin asignar + deuda de C.C.
@@ -126,12 +153,14 @@ class PagoService
                 $pago->estado_cheque = 'pendiente';
                 $pago->numero_cheque = $data['numero_cheque'] ?? null;
                 $pago->fecha_cheque = $data['fecha_cheque'] ?? null;
+                $pago->fecha_cobro = $data['fecha_cobro'] ?? null;
                 $pago->observaciones_cheque = $data['observaciones_cheque'] ?? null;
                 
                 \Log::info('PagoService - Cheque configurado', [
                     'estado_cheque' => $pago->estado_cheque,
                     'numero_cheque' => $pago->numero_cheque,
-                    'fecha_cheque' => $pago->fecha_cheque
+                    'fecha_cheque' => $pago->fecha_cheque,
+                    'fecha_cobro' => $pago->fecha_cobro
                 ]);
             }
             
@@ -150,27 +179,101 @@ class PagoService
             $venta->estado_pago = $estadoCalculado; // Lo asigna explícitamente
             $venta->save(); // Guarda el estado correcto
 
-            // CRÍTICO: Solo reducir saldo del cliente si NO es cheque pendiente
-            // Los cheques pendientes no cuentan como dinero cobrado
-            $debeReducirSaldo = !$esCheque || ($esCheque && isset($data['estado_cheque']) && $data['estado_cheque'] === 'cobrado');
+            // CRÍTICO: Distinguir entre pagos reales y asignación a Cuenta Corriente
             
-            if ($debeReducirSaldo) {
-                // Disminuir saldo del cliente (la lógica original de cheques)
-                $cliente->saldo_actual = round((float)$cliente->saldo_actual - $monto, 2);
+            if ($esCuentaCorriente) {
+                // CASO 1: Asignación a Cuenta Corriente (FIAR saldo pendiente)
+                // Este pago posterior asigna parte del saldo sin asignar de la venta a cuenta corriente
+                // DEBE crear movimiento tipo "venta" (DEBE) para incrementar deuda del cliente
+                
+                \Log::info("Validando asignación a Cuenta Corriente: Venta #{$venta->id}, Cliente #{$cliente->id}, Monto: {$monto}");
+                
+                // VALIDAR límite de crédito ANTES de asignar
+                $saldoActual = $cliente->calcularSaldoReal();
+                $nuevoSaldo = $saldoActual + $monto;
+                
+                if ($nuevoSaldo > (float)$cliente->limite_credito + 0.01) {
+                    throw ValidationException::withMessages([
+                        'monto' => sprintf(
+                            'No se puede asignar $%s a cuenta corriente. ' .
+                            'Excedería el límite de crédito ($%s). ' .
+                            'Deuda actual: $%s, Disponible: $%s',
+                            number_format($monto, 2, ',', '.'),
+                            number_format($cliente->limite_credito, 2, ',', '.'),
+                            number_format($saldoActual, 2, ',', '.'),
+                            number_format(max(0, $cliente->limite_credito - $saldoActual), 2, ',', '.')
+                        )
+                    ]);
+                }
+                
+                \Log::info("Asignación válida. Registrando en Cuenta Corriente...");
+                
+                // Incrementar saldo_actual del cliente (deuda)
+                $cliente->saldo_actual = round((float)$cliente->saldo_actual + $monto, 2);
                 $cliente->save();
-
-                // Crear movimiento de cuenta corriente (pago = monto negativo, reduce deuda)
+                
+                // Crear movimiento de cuenta corriente tipo "venta" (DEBE)
                 if ((float)$cliente->limite_credito > 0) {
                     MovimientoCuentaCorriente::create([
                         'cliente_id'   => $cliente->id,
-                        'tipo'         => 'pago',
-                        'referencia_id'=> $pago->id,
-                        'monto'        => -abs($monto), // Negativo = reduce deuda
-                        'debe'         => 0,
-                        'haber'        => abs($monto),  // Pago = HABER (reduce deuda)
+                        'tipo'         => 'venta',
+                        'referencia_id'=> $venta->id,
+                        'monto'        => abs($monto),
+                        'debe'         => abs($monto), // DEBE = cliente debe dinero
+                        'haber'        => 0,
                         'fecha'        => $pago->fecha_pago,
-                        'descripcion'  => 'Pago venta #'.$venta->id . ($esCheque ? ' (Cheque cobrado)' : ''),
+                        'descripcion'  => "Venta a crédito #{$venta->id} (pago posterior asignado a CC)",
                     ]);
+                    
+                    // Recalcular saldo del cliente basado en movimientos
+                    $cliente->refresh();
+                    $cliente->recalcularSaldo();
+                }
+                
+            } else {
+                // CASO 2: Pago Real (Efectivo, Transferencia, etc.) o Cheque
+                // Solo reducir saldo si NO es cheque pendiente
+                $debeReducirSaldo = !$esCheque || ($esCheque && isset($data['estado_cheque']) && $data['estado_cheque'] === 'cobrado');
+                
+                if ($debeReducirSaldo) {
+                    // VALIDAR que no haya sobrepago
+                    $saldoActual = $cliente->calcularSaldoReal();
+                    
+                    if ($monto > $saldoActual + 0.01) {
+                        throw ValidationException::withMessages([
+                            'monto' => sprintf(
+                                'El monto del pago ($%s) excede la deuda actual del cliente ($%s). ' .
+                                'Máximo permitido: $%s',
+                                number_format($monto, 2, ',', '.'),
+                                number_format($saldoActual, 2, ',', '.'),
+                                number_format($saldoActual, 2, ',', '.')
+                            )
+                        ]);
+                    }
+                    
+                    // Disminuir saldo del cliente (dinero que ingresa)
+                    $cliente->saldo_actual = round((float)$cliente->saldo_actual - $monto, 2);
+                    $cliente->save();
+
+                    // Crear movimiento de cuenta corriente (pago = HABER, reduce deuda)
+                    if ((float)$cliente->limite_credito > 0) {
+                        MovimientoCuentaCorriente::create([
+                            'cliente_id'   => $cliente->id,
+                            'tipo'         => 'pago',
+                            'referencia_id'=> $pago->id,
+                            'monto'        => -abs($monto), // Negativo = reduce deuda
+                            'debe'         => 0,
+                            'haber'        => abs($monto),  // Pago = HABER (reduce deuda)
+                            'fecha'        => $pago->fecha_pago,
+                            'descripcion'  => 'Pago venta #'.$venta->id . ($esCheque ? ' (Cheque cobrado)' : ''),
+                        ]);
+                        
+                        // Recalcular saldo del cliente basado en movimientos
+                        $cliente->refresh();
+                        $cliente->recalcularSaldo();
+                    }
+                    
+                    \Log::info("Pago registrado: Venta #{$venta->id}, Cliente #{$cliente->id}, Monto: {$monto}");
                 }
             }
 

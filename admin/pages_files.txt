@@ -1,4 +1,0 @@
-src:
-@core	  assets       config	navigation  router    utils
-@layouts  components   layouts	pages	    services  views
-App.vue   composables  main.js	plugins     stores

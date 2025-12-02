@@ -15,6 +15,21 @@ class DetalleVenta extends Model
         'venta_id','producto_id','cantidad','precio_unitario','iva'
     ];
 
+    protected $casts = [
+        'cantidad' => 'decimal:2',
+        'precio_unitario' => 'decimal:2',
+        'iva' => 'decimal:2',
+    ];
+
+    /**
+     * Accessor para calcular el subtotal del item
+     * Subtotal = cantidad * precio_unitario
+     */
+    public function getSubtotalAttribute()
+    {
+        return round((float)$this->cantidad * (float)$this->precio_unitario, 2);
+    }
+
     public function venta()
     {
         return $this->belongsTo(Venta::class, 'venta_id');

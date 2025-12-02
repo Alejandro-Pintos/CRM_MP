@@ -9,10 +9,15 @@ class ClienteResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        // Usamos saldo_calculado para asegurar precisión
+        $saldoActual = $this->saldo_calculado ?? $this->saldo_actual;
+        $limiteCredito = (float)$this->limite_credito;
+        
         return [
             'id' => $this->id,
             'nombre' => $this->nombre,
             'apellido' => $this->apellido,
+            'nombre_completo' => trim($this->nombre . ' ' . $this->apellido),
             'cuit_cuil' => $this->cuit_cuil,
             'telefono' => $this->telefono,
             'email' => $this->email,
@@ -20,8 +25,10 @@ class ClienteResource extends JsonResource
             'ciudad' => $this->ciudad,
             'provincia' => $this->provincia,
             'estado' => $this->estado,
-            'saldo_actual' => $this->saldo_actual,
-            'limite_credito' => $this->limite_credito,
+            'saldo_actual' => $saldoActual,
+            'limite_credito' => $limiteCredito,
+            'disponible' => round($limiteCredito - $saldoActual, 2),
+            'requiere_factura' => $this->requiere_factura,
             'fecha_registro' => $this->fecha_registro?->toDateTimeString(),
             'fecha_ultima_compra' => $this->fecha_ultima_compra?->toDateTimeString(),
             'created_at' => $this->created_at?->toDateTimeString(),

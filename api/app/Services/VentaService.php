@@ -73,18 +73,27 @@ class VentaService
             if ($saldoPendiente > $tolerancia) {
                 if ($tieneCuentaCorriente) {
                     // Validar límite de crédito solo si queda saldo pendiente
-                    // saldo_actual = deuda actual del cliente
-                    // credito_disponible = cuánto más puede deber
-                    $credito_disponible = (float)$cliente->limite_credito - (float)$cliente->saldo_actual;
+                    // Calcular saldo REAL en tiempo real (no confiar en BD)
+                    $saldoRealActual = $cliente->calcularSaldoReal();
                     
-                    if ($saldoPendiente > $credito_disponible + $tolerancia) {
+                    // Calcular crédito disponible actual
+                    $credito_disponible = (float)$cliente->limite_credito - $saldoRealActual;
+                    
+                    // Calcular saldo proyectado después de esta venta
+                    $saldoProyectado = $saldoRealActual + $saldoPendiente;
+                    
+                    // VALIDAR que el saldo proyectado NO exceda el límite
+                    if ($saldoProyectado > (float)$cliente->limite_credito + $tolerancia) {
                         throw ValidationException::withMessages([
                             'limite_credito' => sprintf(
-                                'El saldo pendiente ($%s) supera el límite de crédito disponible ($%s). Límite: $%s, Deuda actual: $%s',
-                                number_format($saldoPendiente, 2, ',', '.'),
-                                number_format(max(0, $credito_disponible), 2, ',', '.'),
+                                'La operación excedería el límite de crédito. ' .
+                                'Límite: $%s, Deuda actual: $%s, Saldo pendiente: $%s, ' .
+                                'Total proyectado: $%s (exceso: $%s)',
                                 number_format($cliente->limite_credito, 2, ',', '.'),
-                                number_format($cliente->saldo_actual, 2, ',', '.')
+                                number_format($saldoRealActual, 2, ',', '.'),
+                                number_format($saldoPendiente, 2, ',', '.'),
+                                number_format($saldoProyectado, 2, ',', '.'),
+                                number_format(max(0, $saldoProyectado - $cliente->limite_credito), 2, ',', '.')
                             )
                         ]);
                     }
@@ -177,60 +186,43 @@ class VentaService
                 }
             }
 
-            // 9) Actualizar saldo del cliente SOLO con lo que queda pendiente
-            // y registrar el saldo pendiente como pago en "Cuenta Corriente"
+            // 9) LÓGICA CORREGIDA: Registrar venta a crédito SOLO si hay saldo pendiente
+            // El saldo pendiente se registra como movimiento tipo "venta" (DEBE) en cuenta corriente
+            // NO se crea un "pago" porque el cliente AÚN NO HA PAGADO, está fiado
             \Log::info('PASO 9 - Verificar saldo pendiente', [
                 'saldoPendiente' => $saldoPendiente,
                 'tolerancia' => $tolerancia,
-                'condicion' => $saldoPendiente > $tolerancia
+                'tieneCuentaCorriente' => $tieneCuentaCorriente
             ]);
             
-            if ($saldoPendiente > $tolerancia) {
-                \Log::info('PASO 9.1 - Actualizando saldo cliente', [
+            if ($saldoPendiente > $tolerancia && $tieneCuentaCorriente) {
+                \Log::info('PASO 9.1 - Registrando venta a crédito en cuenta corriente', [
                     'saldo_anterior' => $cliente->saldo_actual,
-                    'saldo_pendiente' => $saldoPendiente,
+                    'monto_fiado' => $saldoPendiente,
                     'saldo_nuevo' => (float)$cliente->saldo_actual + $saldoPendiente
                 ]);
                 
                 $cliente->saldo_actual = round((float)$cliente->saldo_actual + $saldoPendiente, 2);
                 $cliente->save();
 
-                // 9.1) Crear registro de pago con método "Cuenta Corriente" para el saldo pendiente
-                if ($tieneCuentaCorriente) {
-                    \Log::info('PASO 9.2 - Creando pago CC', [
-                        'saldoPendiente' => $saldoPendiente
-                    ]);
-                    
-                    $cuentaCorrienteId = MetodoPago::where('nombre', 'Cuenta Corriente')->value('id');
-                    
-                    Pago::create([
-                        'venta_id' => $venta->id,
-                        'metodo_pago_id' => $cuentaCorrienteId,
-                        'monto' => $saldoPendiente,
-                        'fecha_pago' => $venta->fecha,
-                    ]);
-                    
-                    \Log::info('PASO 9.3 - Creando movimiento CC', [
-                        'saldoPendiente' => $saldoPendiente,
-                        'abs_saldoPendiente' => abs($saldoPendiente),
-                        'debe' => abs($saldoPendiente),
-                        'haber' => 0
-                    ]);
-                    
-                    // 9.2) Crear movimiento de cuenta corriente (DEBE = aumenta deuda)
-                    MovimientoCuentaCorriente::create([
-                        'cliente_id' => $cliente->id,
-                        'tipo' => 'venta',
-                        'referencia_id' => $venta->id,
-                        'monto' => abs($saldoPendiente), // Positivo = aumenta deuda
-                        'debe' => abs($saldoPendiente),  // Venta = DEBE (cliente debe dinero)
-                        'haber' => 0,
-                        'fecha' => $venta->fecha,
-                        'descripcion' => "Saldo pendiente venta #{$venta->id}" . ($venta->numero_comprobante ? " - {$venta->tipo_comprobante} {$venta->numero_comprobante}" : ''),
-                    ]);
-                    
-                    \Log::info('PASO 9.4 - Movimiento CC creado exitosamente');
-                }
+                // CORRECCIÓN CRÍTICA: Crear movimiento tipo "venta" (DEBE), NO un "pago"
+                // Esto registra que el cliente DEBE dinero por esta venta
+                MovimientoCuentaCorriente::create([
+                    'cliente_id' => $cliente->id,
+                    'tipo' => 'venta',
+                    'referencia_id' => $venta->id,
+                    'monto' => abs($saldoPendiente), // Monto positivo representa deuda
+                    'debe' => abs($saldoPendiente),  // DEBE = cliente debe dinero
+                    'haber' => 0,
+                    'fecha' => $venta->fecha,
+                    'descripcion' => "Venta a crédito #{$venta->id}" . ($venta->numero_comprobante ? " - {$venta->tipo_comprobante} {$venta->numero_comprobante}" : ''),
+                ]);
+                
+                \Log::info('PASO 9.2 - Movimiento de venta (DEBE) creado exitosamente');
+                
+                // Recalcular saldo del cliente basado en movimientos
+                $cliente->refresh();
+                $cliente->recalcularSaldo();
             }
 
             // 11) Devolver la venta con sus relaciones cargadas
