@@ -274,8 +274,8 @@ const descargarPedido = () => {
 const seleccionarProducto = (producto) => {
   productoSeleccionado.value = producto.id
   busquedaProducto.value = `${producto.nombre} (${producto.codigo})`
-  // Calcular precio_venta + IVA automáticamente
-  const precioVenta = parseFloat(producto.precio_venta || 0)
+  // Calcular precio + IVA automáticamente (usar precio o precio_venta)
+  const precioVenta = parseFloat(producto.precio || producto.precio_venta || 0)
   const iva = parseFloat(producto.iva || 0)
   precioProducto.value = precioVenta * (1 + iva / 100)
   mostrarResultadosProducto.value = false
@@ -346,8 +346,8 @@ const cancelarEliminarProducto = () => {
 const onProductoChange = () => {
   const producto = productos.value.find(p => p.id === productoSeleccionado.value)
   if (producto) {
-    // Calcular precio_venta + IVA
-    const precioVenta = parseFloat(producto.precio_venta || 0)
+    // Calcular precio + IVA (usar precio o precio_venta)
+    const precioVenta = parseFloat(producto.precio || producto.precio_venta || 0)
     const iva = parseFloat(producto.iva || 0)
     precioProducto.value = precioVenta * (1 + iva / 100)
   }
