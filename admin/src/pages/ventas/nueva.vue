@@ -101,6 +101,32 @@ const creditoDisponible = computed(() => {
   return Math.max(0, limite - saldo)
 })
 
+// Calcular el monto total que se pagará por Cuenta Corriente
+const montoEnCuentaCorriente = computed(() => {
+  if (!venta.value.pagos || venta.value.pagos.length === 0) return 0
+  
+  // Encontrar el ID del método "Cuenta Corriente"
+  const metodoCuentaCorriente = metodosPago.value.find(m => m.nombre === 'Cuenta Corriente')
+  if (!metodoCuentaCorriente) return 0
+  
+  // Sumar todos los pagos con ese método
+  return venta.value.pagos
+    .filter(pago => pago.metodo_pago_id === metodoCuentaCorriente.id)
+    .reduce((sum, pago) => sum + parseFloat(pago.monto || 0), 0)
+})
+
+// Validar si el monto en cuenta corriente + saldo actual supera el límite
+const superaLimiteCredito = computed(() => {
+  if (!tieneCuentaCorriente.value) return false
+  
+  const saldoActual = parseFloat(clienteSeleccionado.value.saldo_actual || 0)
+  const montoCC = montoEnCuentaCorriente.value
+  const nuevoSaldo = saldoActual + montoCC
+  const limite = parseFloat(clienteSeleccionado.value.limite_credito || 0)
+  
+  return nuevoSaldo > limite
+})
+
 // Ya no es computed, ahora se controla manualmente en cada venta
 // const requiereFactura = computed(() => {
 //   return clienteSeleccionado.value && (clienteSeleccionado.value.requiere_factura ?? true)
@@ -1375,6 +1401,20 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
                   <strong>Límite Excedido:</strong> El saldo pendiente ({{ formatPrice(saldoPendiente) }}) supera el crédito disponible ({{ formatPrice(creditoDisponible) }}).
                 </div>
               </VAlert>
+
+              <VAlert
+                v-if="superaLimiteCredito"
+                type="error"
+                variant="tonal"
+                density="comfortable"
+              >
+                <template #prepend>
+                  <VIcon>ri-error-warning-line</VIcon>
+                </template>
+                <div class="text-body-2">
+                  <strong>Límite de Crédito Excedido:</strong> Los pagos registrados en Cuenta Corriente ({{ formatPrice(montoEnCuentaCorriente) }}) sumados al saldo actual ({{ formatPrice(clienteSeleccionado?.saldo_actual || 0) }}) superan el límite de crédito ({{ formatPrice(clienteSeleccionado?.limite_credito || 0) }}).
+                </div>
+              </VAlert>
               
               <VAlert
                 v-if="saldoPendiente > 0.01 && !tieneCuentaCorriente"
@@ -1414,7 +1454,7 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
           size="large"
           @click="guardarVenta"
           :loading="loading"
-          :disabled="loading || venta.productos.length === 0 || !venta.cliente_id"
+          :disabled="loading || venta.productos.length === 0 || !venta.cliente_id || superaLimiteCredito"
           class="mb-2"
         >
           <VIcon class="mr-2">ri-save-line</VIcon>
@@ -1502,12 +1542,13 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
             <VCol cols="12">
               <VTextField
                 v-model="datosCheque.fecha_cobro"
-                label="Fecha de Cobro Estimada"
+                label="Fecha de Cobro Estimada *"
                 type="date"
                 prepend-inner-icon="ri-calendar-check-line"
                 variant="outlined"
                 hint="Fecha estimada en que se podrá cobrar el cheque"
                 persistent-hint
+                :rules="[v => !!v || 'Fecha de cobro requerida']"
               />
             </VCol>
 
@@ -1541,7 +1582,7 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
           <VBtn
             color="primary"
             @click="finalizarAgregarPago"
-            :disabled="!datosCheque.numero_cheque || !datosCheque.fecha_cheque"
+            :disabled="!datosCheque.numero_cheque || !datosCheque.fecha_cheque || !datosCheque.fecha_cobro"
           >
             <VIcon class="mr-2">ri-check-line</VIcon>
             Agregar Cheque

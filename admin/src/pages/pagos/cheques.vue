@@ -39,7 +39,8 @@ const headers = [
   { title: 'Cliente', key: 'cliente.nombre' },
   { title: 'Venta', key: 'venta_id', align: 'center' },
   { title: 'Monto', key: 'monto', align: 'end' },
-  { title: 'Fecha Vencimiento', key: 'fecha_cobro', align: 'center' },
+  { title: 'Fecha Emisión', key: 'fecha_cheque', align: 'center' },
+  { title: 'Fecha Cobro', key: 'fecha_cobro', align: 'center' },
   { title: 'Días Restantes', key: 'dias_restantes', align: 'center' },
   { title: 'Estado', key: 'estado_alerta', align: 'center' },
   { title: 'Acciones', key: 'actions', sortable: false, align: 'center' },
@@ -172,19 +173,25 @@ const confirmarCobrado = async () => {
 
   loading.value = true
   try {
-    await apiFetch(`/api/v1/pagos/${chequeCobrar.value.id}/estado-cheque`, {
-      method: 'PATCH',
+    const response = await apiFetch(`/api/v1/cheques/${chequeCobrar.value.id}/cobrar`, {
+      method: 'POST',
       body: {
-        estado_cheque: 'cobrado',
         fecha_cobro: new Date().toISOString().split('T')[0],
       }
     })
     
     toast.success('Cheque marcado como cobrado')
+    
+    // Actualizar en las listas
+    const index = cheques.value.findIndex(c => c.id === chequeCobrar.value.id)
+    if (index !== -1) {
+      cheques.value.splice(index, 1)
+    }
+    
     await fetchCheques()
     await fetchHistorial()
   } catch (e) {
-    toast.error('Error al actualizar cheque: ' + (e.message || 'Error desconocido'))
+    toast.error('Error al cobrar cheque: ' + (e.message || 'Error desconocido'))
   } finally {
     loading.value = false
     dialogCobrar.value = false
@@ -208,19 +215,25 @@ const confirmarRechazado = async () => {
 
   loading.value = true
   try {
-    await apiFetch(`/api/v1/pagos/${chequeRechazar.value.id}/estado-cheque`, {
-      method: 'PATCH',
+    const response = await apiFetch(`/api/v1/cheques/${chequeRechazar.value.id}/rechazar`, {
+      method: 'POST',
       body: {
-        estado_cheque: 'rechazado',
-        observaciones_cheque: motivoRechazo.value,
+        motivo_rechazo: motivoRechazo.value,
       }
     })
     
     toast.success('Cheque marcado como rechazado')
+    
+    // Quitar de la lista de pendientes
+    const index = cheques.value.findIndex(c => c.id === chequeRechazar.value.id)
+    if (index !== -1) {
+      cheques.value.splice(index, 1)
+    }
+    
     await fetchCheques()
     await fetchHistorial()
   } catch (e) {
-    toast.error('Error al actualizar cheque: ' + (e.message || 'Error desconocido'))
+    toast.error('Error al rechazar cheque: ' + (e.message || 'Error desconocido'))
   } finally {
     loading.value = false
     dialogRechazar.value = false
@@ -234,8 +247,8 @@ const abrirEdicion = (cheque) => {
   datosEdicion.value = {
     numero_cheque: cheque.numero_cheque || '',
     fecha_cheque: cheque.fecha_cheque || new Date().toISOString().split('T')[0],
-    fecha_cobro: cheque.fecha_cobro || '',
-    observaciones_cheque: cheque.observaciones || '',
+    fecha_cobro: cheque.fecha_cobro || '', // fecha_vencimiento en el backend
+    observaciones_cheque: cheque.observaciones_cheque || '',
   }
   dialogEditar.value = true
 }
@@ -248,19 +261,26 @@ const guardarEdicion = async () => {
 
   loading.value = true
   try {
-    await apiFetch(`/api/v1/pagos/${chequeEditando.value.id}`, {
+    const response = await apiFetch(`/api/v1/cheques/${chequeEditando.value.id}`, {
       method: 'PATCH',
       body: {
-        numero_cheque: datosEdicion.value.numero_cheque,
-        fecha_cheque: datosEdicion.value.fecha_cheque,
-        fecha_cobro: datosEdicion.value.fecha_cobro || null,
-        observaciones_cheque: datosEdicion.value.observaciones_cheque || null,
+        numero: datosEdicion.value.numero_cheque,
+        fecha_emision: datosEdicion.value.fecha_cheque,
+        fecha_vencimiento: datosEdicion.value.fecha_cobro || null,
+        observaciones: datosEdicion.value.observaciones_cheque || null,
       }
     })
     
     toast.success('Datos del cheque actualizados')
     dialogEditar.value = false
-    await fetchCheques()
+    
+    // Actualizar el cheque en la lista sin recargar todo
+    const index = cheques.value.findIndex(c => c.id === chequeEditando.value.id)
+    if (index !== -1) {
+      cheques.value[index] = response
+    }
+    
+    await fetchCheques() // Recargar para actualizar resumen
   } catch (e) {
     toast.error('Error al actualizar cheque: ' + (e.message || 'Error desconocido'))
   } finally {
@@ -276,24 +296,6 @@ const cancelarEdicion = () => {
     fecha_cheque: '',
     fecha_cobro: '',
     observaciones_cheque: '',
-  }
-}
-
-const corregirChequesHistoricos = async () => {
-  if (!confirm('¿Está seguro de corregir los cheques históricos? Esto ajustará los saldos de los clientes que tienen cheques pendientes.')) return
-
-  loading.value = true
-  try {
-    const response = await apiFetch('/api/v1/pagos/corregir-cheques-historicos', {
-      method: 'POST'
-    })
-    
-    toast.success(`${response.total_corregidos} cheques corregidos exitosamente`)
-    await fetchCheques()
-  } catch (e) {
-    toast.error('Error al corregir cheques: ' + (e.message || 'Error desconocido'))
-  } finally {
-    loading.value = false
   }
 }
 
@@ -366,15 +368,6 @@ onMounted(() => {
         <p class="text-body-2 text-medium-emphasis">Monitoreo y gestión de cheques pendientes</p>
       </div>
       <div class="d-flex ga-2">
-        <VBtn
-          color="warning"
-          variant="outlined"
-          prepend-icon="ri-tools-line"
-          @click="corregirChequesHistoricos"
-          :loading="loading"
-        >
-          Corregir Históricos
-        </VBtn>
         <VBtn
           color="primary"
           prepend-icon="ri-refresh-line"
@@ -596,16 +589,21 @@ onMounted(() => {
             <span class="font-weight-bold text-primary">{{ formatPrice(item.monto) }}</span>
           </template>
 
-          <!-- Fecha de vencimiento (cobro) con formato mejorado -->
+          <!-- Fecha de Emisión -->
+          <template #item.fecha_cheque="{ item }">
+            <div class="text-center">
+              <span v-if="item.fecha_cheque">{{ formatDate(item.fecha_cheque) }}</span>
+              <span v-else class="text-medium-emphasis">Sin fecha</span>
+            </div>
+          </template>
+
+          <!-- Fecha de Cobro (vencimiento) -->
           <template #item.fecha_cobro="{ item }">
             <div class="text-center">
               <div class="font-weight-medium">
-                {{ item.fecha_cobro ? formatDate(item.fecha_cobro) : (item.fecha_cheque ? formatDate(item.fecha_cheque) : 'Sin fecha') }}
+                {{ item.fecha_cobro ? formatDate(item.fecha_cobro) : 'Sin fecha' }}
               </div>
-              <div v-if="item.fecha_cheque && item.fecha_cobro" class="text-caption text-medium-emphasis">
-                Emisión: {{ formatDate(item.fecha_cheque) }}
-              </div>
-              <div v-if="item.observaciones" class="text-caption text-medium-emphasis">{{ item.observaciones }}</div>
+              <div v-if="item.observaciones" class="text-caption text-medium-emphasis mt-1">{{ item.observaciones }}</div>
             </div>
           </template>
 

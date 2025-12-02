@@ -41,5 +41,22 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // Asegurar que las respuestas de error tengan headers CORS
+        $exceptions->respond(function ($response, $exception, $request) {
+            // Solo aplicar CORS en rutas API
+            if ($request->is('api/*')) {
+                $origin = $request->header('Origin');
+                $allowedOrigins = config('cors.allowed_origins', []);
+                
+                // Si el origin está en la lista de permitidos, agregar headers CORS
+                if (in_array($origin, $allowedOrigins, true)) {
+                    $response->headers->set('Access-Control-Allow-Origin', $origin);
+                    $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+                    $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+                    $response->headers->set('Access-Control-Max-Age', '3600');
+                }
+            }
+            
+            return $response;
+        });
     })->create();

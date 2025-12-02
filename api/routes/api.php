@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\ReporteController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Api\PedidoController;
 use App\Http\Controllers\PresupuestoController;
+use App\Http\Controllers\ChequeController;
 
 Route::prefix('v1')->middleware('auth:api')->group(function () {
 
@@ -50,11 +51,30 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
     // Actualizar estado de cheque
     Route::patch('pagos/{pago}/estado-cheque', [PagoController::class, 'actualizarEstadoCheque'])->name('pagos.estado_cheque');
     
-    // Cheques pendientes y alertas
-    Route::get('cheques/pendientes', [PagoController::class, 'chequesPendientes'])->name('cheques.pendientes');
+    // === NUEVO SISTEMA DE CHEQUES (ChequeController) ===
+    // IMPORTANTE: Las rutas específicas DEBEN ir ANTES de las rutas con parámetros
+    // para evitar que Laravel intente hacer route model binding con "pendientes" o "historial"
     
-    // Historial completo de cheques (auditoría)
-    Route::get('cheques/historial', [PagoController::class, 'chequesHistorial'])->name('cheques.historial');
+    // Cheques pendientes (con alertas de vencimiento)
+    Route::get('cheques/pendientes', [ChequeController::class, 'pendientes'])->name('cheques.pendientes');
+    
+    // Historial de cheques procesados (cobrados/rechazados)
+    Route::get('cheques/historial', [ChequeController::class, 'historial'])->name('cheques.historial');
+    
+    // Listar cheques con filtros generales
+    Route::get('cheques', [ChequeController::class, 'index'])->name('cheques.index');
+    
+    // Marcar cheque como cobrado
+    Route::post('cheques/{cheque}/cobrar', [ChequeController::class, 'cobrar'])->name('cheques.cobrar');
+    
+    // Marcar cheque como rechazado
+    Route::post('cheques/{cheque}/rechazar', [ChequeController::class, 'rechazar'])->name('cheques.rechazar');
+    
+    // Actualizar datos administrativos del cheque
+    Route::patch('cheques/{cheque}', [ChequeController::class, 'update'])->name('cheques.update');
+    
+    // Ver detalle de un cheque (DEBE IR AL FINAL para no capturar "pendientes" o "historial")
+    Route::get('cheques/{cheque}', [ChequeController::class, 'show'])->name('cheques.show');
     
     // Corregir cheques históricos
     Route::post('pagos/corregir-cheques-historicos', [PagoController::class, 'corregirChequesHistoricos'])->name('pagos.corregir_cheques');
@@ -64,6 +84,7 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
 
     // Cuenta corriente por cliente
     Route::get('clientes/{cliente}/cuenta-corriente', [CuentaCorrienteController::class, 'show'])->name('cta_cte.show');
+    Route::post('clientes/{cliente}/cuenta-corriente/pagos', [CuentaCorrienteController::class, 'registrarPago'])->name('cta_cte.registrar_pago');
     
     // Recalcular saldos de cuenta corriente
     Route::post('cuentas-corrientes/recalcular', [CuentaCorrienteController::class, 'recalcular'])->name('cta_cte.recalcular');
