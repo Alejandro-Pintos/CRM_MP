@@ -15,7 +15,7 @@ class ProveedorEstadoCuentaController extends Controller
     public function __construct(ProveedorEstadoCuentaService $estadoCuentaService)
     {
         $this->middleware(['auth:api']);
-        $this->middleware('permission:proveedores.cuenta.index')->only(['resumen', 'movimientos']);
+        $this->middleware('permission:proveedores.cuenta.index,api')->only(['resumen', 'movimientos']);
         
         $this->estadoCuentaService = $estadoCuentaService;
     }

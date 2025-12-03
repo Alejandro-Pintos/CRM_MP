@@ -13,10 +13,10 @@ class ClientesController extends Controller
     public function __construct()
     {
         $this->middleware(['auth:api']);
-        $this->middleware('permission:clientes.index')->only(['index','show']);
-        $this->middleware('permission:clientes.store')->only(['store']);
-        $this->middleware('permission:clientes.update')->only(['update']);
-        $this->middleware('permission:clientes.destroy')->only(['destroy']);
+        $this->middleware('permission:clientes.index,api')->only(['index','show']);
+        $this->middleware('permission:clientes.store,api')->only(['store']);
+        $this->middleware('permission:clientes.update,api')->only(['update']);
+        $this->middleware('permission:clientes.destroy,api')->only(['destroy']);
     }
 
     public function index(Request $request)

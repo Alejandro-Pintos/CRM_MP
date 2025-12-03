@@ -14,9 +14,9 @@ class PagoEmpleadoController extends Controller
     public function __construct()
     {
         $this->middleware(['auth:api']);
-        $this->middleware('permission:empleados.pagos.index')->only(['index']);
-        $this->middleware('permission:empleados.pagos.store')->only(['store']);
-        $this->middleware('permission:empleados.pagos.destroy')->only(['destroy']);
+        $this->middleware('permission:empleados.pagos.index,api')->only(['index']);
+        $this->middleware('permission:empleados.pagos.store,api')->only(['store']);
+        $this->middleware('permission:empleados.pagos.destroy,api')->only(['destroy']);
     }
 
     /**

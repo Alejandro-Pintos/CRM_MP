@@ -169,34 +169,34 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
     Route::get('reportes/proveedores', [ReporteController::class, 'proveedores'])->name('reportes.proveedores');
     // Exportar reportes
     Route::get('reportes/ventas/export.csv', [ReporteController::class, 'exportVentasCsv'])
-    ->middleware('permission:reportes.export')
+    ->middleware('permission:reportes.export,api')
     ->name('reportes.ventas.export.csv');
     Route::get('reportes/ventas/export.xlsx', [ReporteController::class, 'exportVentasXlsx'])
-    ->middleware('permission:reportes.export')
+    ->middleware('permission:reportes.export,api')
     ->name('reportes.ventas.export.xlsx');
     Route::get('reportes/proveedores/export.xlsx', [ReporteController::class, 'exportProveedoresXlsx'])
-    ->middleware('permission:reportes.export')
+    ->middleware('permission:reportes.export,api')
     ->name('reportes.proveedores.export.xlsx');
     Route::get('reportes/proveedores/export.csv', [ReporteController::class, 'exportProveedoresCsv'])
-    ->middleware('permission:reportes.export')
+    ->middleware('permission:reportes.export,api')
     ->name('reportes.proveedores.export.csv');
     Route::get('reportes/clientes/export.xlsx', [ReporteController::class, 'exportClientesXlsx'])
-    ->middleware('permission:reportes.export')
+    ->middleware('permission:reportes.export,api')
     ->name('reportes.clientes.export.xlsx');
     Route::get('reportes/clientes/export.csv', [ReporteController::class, 'exportClientesCsv'])
-    ->middleware('permission:reportes.export')
+    ->middleware('permission:reportes.export,api')
     ->name('reportes.clientes.export.csv');
     Route::get('reportes/productos/export.xlsx', [ReporteController::class, 'exportProductosXlsx'])
-    ->middleware('permission:reportes.export')
+    ->middleware('permission:reportes.export,api')
     ->name('reportes.productos.export.xlsx');
     Route::get('reportes/productos/export.csv', [ReporteController::class, 'exportProductosCsv'])
-    ->middleware('permission:reportes.export')
+    ->middleware('permission:reportes.export,api')
     ->name('reportes.productos.export.csv');
 
     //Reporte full
     Route::get('reportes/full/single.xlsx',
     [ReporteController::class, 'exportFullSingleSheetXlsx']
-    )->middleware('permission:reportes.export')
+    )->middleware('permission:reportes.export,api')
     ->name('reportes.full_single_export');
 
     // Empleados

@@ -14,10 +14,10 @@ class EmpleadoController extends Controller
     public function __construct()
     {
         $this->middleware(['auth:api']);
-        $this->middleware('permission:empleados.index')->only(['index', 'show']);
-        $this->middleware('permission:empleados.store')->only(['store']);
-        $this->middleware('permission:empleados.update')->only(['update']);
-        $this->middleware('permission:empleados.destroy')->only(['destroy']);
+        $this->middleware('permission:empleados.index,api')->only(['index', 'show']);
+        $this->middleware('permission:empleados.store,api')->only(['store']);
+        $this->middleware('permission:empleados.update,api')->only(['update']);
+        $this->middleware('permission:empleados.destroy,api')->only(['destroy']);
     }
 
     /**

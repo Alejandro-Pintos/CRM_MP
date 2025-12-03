@@ -14,9 +14,9 @@ class PagoProveedorController extends Controller
     public function __construct()
     {
         $this->middleware(['auth:api']);
-        $this->middleware('permission:proveedores.pagos.index')->only(['index']);
-        $this->middleware('permission:proveedores.pagos.store')->only(['store']);
-        $this->middleware('permission:proveedores.pagos.destroy')->only(['destroy']);
+        $this->middleware('permission:proveedores.pagos.index,api')->only(['index']);
+        $this->middleware('permission:proveedores.pagos.store,api')->only(['store']);
+        $this->middleware('permission:proveedores.pagos.destroy,api')->only(['destroy']);
     }
 
     /**

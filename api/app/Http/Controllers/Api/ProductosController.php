@@ -13,10 +13,10 @@ class ProductosController extends Controller
     public function __construct()
     {
         $this->middleware(['auth:api']);
-        $this->middleware('permission:productos.index')->only(['index', 'show']);
-        $this->middleware('permission:productos.store')->only(['store']);
-        $this->middleware('permission:productos.update')->only(['update']);
-        $this->middleware('permission:productos.destroy')->only(['destroy']);
+        $this->middleware('permission:productos.index,api')->only(['index', 'show']);
+        $this->middleware('permission:productos.store,api')->only(['store']);
+        $this->middleware('permission:productos.update,api')->only(['update']);
+        $this->middleware('permission:productos.destroy,api')->only(['destroy']);
     }
 
     /**
