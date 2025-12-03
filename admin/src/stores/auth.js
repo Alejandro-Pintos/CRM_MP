@@ -7,7 +7,7 @@ const TOKEN_KEY = 'crmmp:token'
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: localStorage.getItem(TOKEN_KEY) || null,
-    user: null,
+    user: JSON.parse(localStorage.getItem('userData') || 'null'),
   }),
   getters: {
     isAuthenticated: s => !!s.token,
@@ -17,6 +17,15 @@ export const useAuthStore = defineStore('auth', {
       this.token = token
       if (token) localStorage.setItem(TOKEN_KEY, token)
       else localStorage.removeItem(TOKEN_KEY)
+    },
+
+    setUser(user) {
+      this.user = user
+      if (user) {
+        localStorage.setItem('userData', JSON.stringify(user))
+      } else {
+        localStorage.removeItem('userData')
+      }
     },
 
     async login({ email, password }) {
@@ -32,10 +41,10 @@ export const useAuthStore = defineStore('auth', {
       try {
         const response = await getMe()
         // Laravel Resources envuelven la respuesta en { data: {...} }
-        this.user = response?.data ?? response?.user ?? response
+        this.setUser(response?.data ?? response?.user ?? response)
       } catch (error) {
         console.warn('No se pudo cargar el perfil del usuario:', error)
-        this.user = null
+        this.setUser(null)
       }
 
       return true
@@ -44,7 +53,7 @@ export const useAuthStore = defineStore('auth', {
     async logout() {
       const { logout: apiLogout } = await import('@/services/auth')
       await apiLogout()
-      this.user = null
+      this.setUser(null)
       this.setToken(null)
     },
   },

@@ -31,7 +31,7 @@ const currentUser = computed(() => {
   return {
     name: user?.nombre || 'Usuario',
     role: user?.roles?.[0] || 'Usuario',
-    avatar: avatar1, // TODO: usar user?.avatar cuando esté disponible
+    avatar: user?.avatar || avatar1,
   }
 })
 
@@ -127,7 +127,7 @@ async function handleLogout() {
     console.error('Error al cerrar sesión:', error)
     // Forzar logout local aunque falle el backend
     authStore.setToken(null)
-    authStore.user = null
+    authStore.setUser(null)
     router.push({ name: 'login' })
   }
 }

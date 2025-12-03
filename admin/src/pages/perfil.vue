@@ -86,9 +86,8 @@ async function guardarDatos() {
     const response = await updateProfile(formDatos.value)
     usuario.value = response.data || response
     
-    if (authStore.user) {
-      authStore.user = usuario.value
-    }
+    // Actualizar el store de auth para que el header se actualice
+    authStore.setUser(usuario.value)
     
     mostrarMensaje('success', 'Datos actualizados exitosamente')
   } catch (err) {
@@ -153,9 +152,8 @@ async function handleAvatarChange(event) {
     const response = await updateAvatar(file)
     usuario.value = response.data || response
     
-    if (authStore.user) {
-      authStore.user = usuario.value
-    }
+    // Actualizar el store de auth para que el header se actualice
+    authStore.setUser(usuario.value)
     
     mostrarMensaje('success', 'Avatar actualizado exitosamente')
   } catch (err) {
@@ -252,7 +250,7 @@ const formatearFecha = (fecha) => {
 }
 
 function irAGestionUsuarios() {
-  router.push({ name: 'usuarios' })
+  router.push({ name: 'usuarios-index' })
 }
 
 onMounted(cargarPerfil)

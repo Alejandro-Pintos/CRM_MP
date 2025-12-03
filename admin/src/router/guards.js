@@ -103,16 +103,21 @@ export const setupGuards = router => {
     }
 
     // Permitir acceso total al Super-Admin
-    const isSuperAdmin = user && user.roles && user.roles.some(r =>
-      r.name === 'superadmin' || r.name === 'Super-Admin' || r.name === 'super-admin'
-    );
+    const isSuperAdmin = user && user.roles && user.roles.some(r => {
+      // Los roles pueden venir como strings o como objetos {name: 'admin'}
+      const roleName = typeof r === 'string' ? r : r.name;
+      return roleName === 'superadmin' || roleName === 'Super-Admin' || roleName === 'super-admin' || roleName === 'admin';
+    });
     if (isSuperAdmin) {
       return next();
     }
 
     // Si la ruta requiere rol y el usuario no lo tiene, redirige al home
     if (to.meta && to.meta.requiresRole) {
-      const hasRole = user && user.roles && user.roles.some(r => r.name === to.meta.requiresRole);
+      const hasRole = user && user.roles && user.roles.some(r => {
+        const roleName = typeof r === 'string' ? r : r.name;
+        return roleName === to.meta.requiresRole;
+      });
       if (!hasRole) {
         return next({ name: 'root' });
       }
