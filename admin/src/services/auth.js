@@ -31,9 +31,11 @@ export async function logout() {
 
 export async function getMe() {
   // Tu backend expone POST /api/v1/me según route:list
-  const data = await apiFetch('/api/v1/me', { method: 'POST' })
-  if (data) localStorage.setItem('userData', JSON.stringify(data))
-  return data
+  const response = await apiFetch('/api/v1/me', { method: 'POST' })
+  // Laravel Resources envuelven en {data: {...}}, extraer el usuario real
+  const userData = response?.data || response
+  if (userData) localStorage.setItem('userData', JSON.stringify(userData))
+  return userData
 }
 
 /**

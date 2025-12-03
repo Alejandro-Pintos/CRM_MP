@@ -13,10 +13,8 @@ export const useAuthStore = defineStore('auth', {
     try {
       if (userDataStr) {
         user = JSON.parse(userDataStr)
-        console.log('✅ Usuario cargado desde localStorage:', user)
       }
     } catch (e) {
-      console.error('❌ Error al parsear userData:', e)
       localStorage.removeItem('userData')
     }
     
@@ -36,14 +34,11 @@ export const useAuthStore = defineStore('auth', {
     },
 
     setUser(user) {
-      console.log('📝 setUser llamado con:', user)
       this.user = user
       if (user) {
         localStorage.setItem('userData', JSON.stringify(user))
-        console.log('✅ Usuario guardado en localStorage')
       } else {
         localStorage.removeItem('userData')
-        console.log('🗑️ Usuario eliminado de localStorage')
       }
     },
 
@@ -57,15 +52,12 @@ export const useAuthStore = defineStore('auth', {
       this.setToken(token)
 
       // Obtener perfil completo del usuario
+      // Obtener perfil completo del usuario
       try {
-        const response = await getMe()
-        console.log('📥 Respuesta de getMe():', response)
-        // Laravel Resources envuelven la respuesta en { data: {...} }
-        const userData = response?.data || response
-        console.log('👤 Datos del usuario extraídos:', userData)
+        const userData = await getMe()
+        // getMe() ya extrae el data y lo guarda en localStorage
         this.setUser(userData)
       } catch (error) {
-        console.error('❌ No se pudo cargar el perfil del usuario:', error)
         this.setUser(null)
       }
 

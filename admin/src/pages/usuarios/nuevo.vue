@@ -79,7 +79,7 @@ async function guardar() {
     }
     
     await createUser(payload)
-    router.push({ name: 'usuarios' })
+    router.push({ name: 'usuarios-index' })
   } catch (error) {
     console.error('Error al crear usuario:', error)
     
@@ -94,7 +94,7 @@ async function guardar() {
 }
 
 function cancelar() {
-  router.push({ name: 'usuarios' })
+  router.push({ name: 'usuarios-index' })
 }
 
 // Lifecycle
