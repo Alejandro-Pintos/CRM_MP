@@ -90,4 +90,11 @@ export default [
     to: '/reportes',
     icon: { icon: 'ri-folder-chart-line' },
   },
+
+  // === AYUDA Y SOPORTE ===
+  {
+    title: 'Manual de Usuario',
+    to: { name: 'manual-usuario' },
+    icon: { icon: 'ri-book-open-line' },
+  },
 ]
