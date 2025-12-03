@@ -19,14 +19,14 @@ const modules = [
     description: 'Registrar ventas, consultar historial y gestionar formas de pago.',
     icon: 'mdi-cart',
     color: 'primary',
-    route: { name: 'ventas' }
+    route: { name: 'ventas-nueva' }
   },
   {
     title: 'Pagos',
-    description: 'Gestión de cobros, pagos a proveedores y cheques.',
+    description: 'Gestión de cobros de clientes y cheques recibidos.',
     icon: 'mdi-cash-multiple',
     color: 'success',
-    route: { name: 'pagos' }
+    route: { name: 'pagos-cheques' }
   },
   {
     title: 'Pedidos',
