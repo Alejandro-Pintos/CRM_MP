@@ -9,21 +9,36 @@ class Cheque extends Model
 {
     use HasFactory;
 
+    // Tipos de cheque
+    public const TIPO_RECIBIDO = 'recibido';
+    public const TIPO_EMITIDO = 'emitido';
+
     // Constantes de estado
     public const ESTADO_PENDIENTE = 'pendiente';
-    public const ESTADO_COBRADO = 'cobrado';
+    public const ESTADO_COBRADO = 'cobrado';      // Para cheques recibidos
+    public const ESTADO_DEBITADO = 'debitado';    // Para cheques emitidos (equivalente a cobrado)
     public const ESTADO_RECHAZADO = 'rechazado';
+    public const ESTADO_ANULADO = 'anulado';
 
     public const ESTADOS_VALIDOS = [
         self::ESTADO_PENDIENTE,
         self::ESTADO_COBRADO,
+        self::ESTADO_DEBITADO,
         self::ESTADO_RECHAZADO,
+        self::ESTADO_ANULADO,
     ];
 
     protected $fillable = [
+        'tipo',
+        // Cheques recibidos (de clientes)
         'venta_id',
         'cliente_id',
         'pago_id',
+        // Cheques emitidos (a proveedores)
+        'proveedor_id',
+        'pago_proveedor_id',
+        // Datos comunes
+        'banco',
         'numero',
         'monto',
         'fecha_emision',
@@ -43,7 +58,7 @@ class Cheque extends Model
         'monto' => 'decimal:2',
     ];
 
-    // Relaciones
+    // Relaciones para cheques RECIBIDOS (de clientes)
     public function venta()
     {
         return $this->belongsTo(Venta::class);
@@ -59,7 +74,27 @@ class Cheque extends Model
         return $this->belongsTo(Pago::class);
     }
 
+    // Relaciones para cheques EMITIDOS (a proveedores)
+    public function proveedor()
+    {
+        return $this->belongsTo(Proveedor::class);
+    }
+
+    public function pagoProveedor()
+    {
+        return $this->belongsTo(PagoProveedor::class, 'pago_proveedor_id');
+    }
+
     // Scopes útiles
+    public function scopeRecibidos($query)
+    {
+        return $query->where('tipo', self::TIPO_RECIBIDO);
+    }
+
+    public function scopeEmitidos($query)
+    {
+        return $query->where('tipo', self::TIPO_EMITIDO);
+    }
     public function scopePendientes($query)
     {
         return $query->where('estado', 'pendiente');
@@ -184,5 +219,43 @@ class Cheque extends Model
         }
 
         return 'normal';
+    }
+
+    /**
+     * Valida que el cheque tenga las relaciones correctas según su tipo
+     * 
+     * @return bool
+     */
+    public function validarRelaciones(): bool
+    {
+        if ($this->tipo === self::TIPO_RECIBIDO) {
+            return !is_null($this->venta_id) && !is_null($this->cliente_id);
+        }
+        
+        if ($this->tipo === self::TIPO_EMITIDO) {
+            return !is_null($this->proveedor_id);
+        }
+        
+        return false;
+    }
+
+    /**
+     * Verifica si el cheque es recibido (de cliente)
+     * 
+     * @return bool
+     */
+    public function esRecibido(): bool
+    {
+        return $this->tipo === self::TIPO_RECIBIDO;
+    }
+
+    /**
+     * Verifica si el cheque es emitido (a proveedor)
+     * 
+     * @return bool
+     */
+    public function esEmitido(): bool
+    {
+        return $this->tipo === self::TIPO_EMITIDO;
     }
 }

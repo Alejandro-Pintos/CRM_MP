@@ -14,6 +14,7 @@ use App\Http\Controllers\PresupuestoController;
 use App\Http\Controllers\ChequeController;
 use App\Http\Controllers\Api\PagoProveedorController;
 use App\Http\Controllers\Api\ProveedorEstadoCuentaController;
+use App\Http\Controllers\Api\ChequeEmitidoController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\ProfileController;
@@ -55,6 +56,34 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
         ->name('proveedores.cuenta.resumen');
     Route::get('proveedores/{proveedor}/cuenta/movimientos', [ProveedorEstadoCuentaController::class, 'movimientos'])
         ->name('proveedores.cuenta.movimientos');
+    
+    // === CHEQUES EMITIDOS (a proveedores) ===
+    // Listado general de cheques emitidos con filtros
+    Route::get('cheques-emitidos', [ChequeEmitidoController::class, 'index'])
+        ->name('cheques-emitidos.index');
+    
+    // Cheques emitidos por proveedor
+    Route::get('proveedores/{proveedor}/cheques-emitidos', [ChequeEmitidoController::class, 'byProveedor'])
+        ->name('proveedores.cheques-emitidos');
+    
+    Route::post('proveedores/{proveedor}/cheques-emitidos', [ChequeEmitidoController::class, 'store'])
+        ->name('proveedores.cheques-emitidos.store');
+    
+    // Acciones sobre cheques emitidos
+    Route::get('cheques-emitidos/{cheque}', [ChequeEmitidoController::class, 'show'])
+        ->name('cheques-emitidos.show');
+    
+    Route::patch('cheques-emitidos/{cheque}', [ChequeEmitidoController::class, 'update'])
+        ->name('cheques-emitidos.update');
+    
+    Route::post('cheques-emitidos/{cheque}/debitar', [ChequeEmitidoController::class, 'debitar'])
+        ->name('cheques-emitidos.debitar');
+    
+    Route::post('cheques-emitidos/{cheque}/anular', [ChequeEmitidoController::class, 'anular'])
+        ->name('cheques-emitidos.anular');
+    
+    Route::delete('cheques-emitidos/{cheque}', [ChequeEmitidoController::class, 'destroy'])
+        ->name('cheques-emitidos.destroy');
     
     // Pedidos
     Route::apiResource('pedidos', PedidoController::class)

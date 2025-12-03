@@ -11,6 +11,17 @@ import {
 } from '@/services/proveedores'
 import { getMetodosPago } from '@/services/metodosPago'
 import { toast } from '@/plugins/toast'
+import ProveedoresPagos from './pagos.vue'
+import ProveedoresChequesEmitidos from './cheques-emitidos.vue'
+
+// Tab activo
+const tabActual = ref('listado')
+
+const tabs = [
+  { value: 'listado', title: 'Listado de Proveedores', icon: 'mdi-format-list-bulleted' },
+  { value: 'pagos', title: 'Pagos a Proveedores', icon: 'mdi-cash-multiple' },
+  { value: 'cheques', title: 'Cheques Emitidos', icon: 'mdi-checkbook' },
+]
 
 const proveedores = ref([])
 const proveedoresConEstado = ref([])
@@ -346,39 +357,52 @@ onMounted(() => {
     <VCard>
       <VCardTitle>
         <div class="d-flex justify-space-between align-center flex-wrap ga-4">
-          <span class="text-h5">Proveedores</span>
-          <div class="d-flex ga-2 align-center">
-            <VTextField
-              v-model="search"
-              prepend-inner-icon="mdi-magnify"
-              label="Buscar proveedores"
-              single-line
-              hide-details
-              density="compact"
-              style="min-width: 300px;"
-              clearable
-            />
-            <VBtn color="primary" @click="dialog = true">
-              <VIcon start>mdi-plus</VIcon>
-              Nuevo Proveedor
-            </VBtn>
-          </div>
+          <span class="text-h5">Gestión de Proveedores</span>
         </div>
       </VCardTitle>
 
       <VCardText>
-        <VAlert v-if="error" type="error" dismissible @click:close="error = ''">
-          {{ error }}
-        </VAlert>
+        <!-- Tabs de navegación -->
+        <VTabs v-model="tabActual" color="primary" class="mb-6">
+          <VTab v-for="tab in tabs" :key="tab.value" :value="tab.value">
+            <VIcon :icon="tab.icon" start />
+            {{ tab.title }}
+          </VTab>
+        </VTabs>
 
-        <VDataTable
-          :headers="headers"
-          :items="proveedoresFiltrados"
-          :loading="loading"
-          loading-text="Cargando proveedores..."
-          no-data-text="No hay proveedores registrados"
-          class="elevation-1"
-        >
+        <!-- Contenido de tabs -->
+        <VWindow v-model="tabActual">
+          <!-- TAB 1: Listado de Proveedores -->
+          <VWindowItem value="listado">
+            <div class="d-flex justify-space-between align-center mb-4">
+              <VTextField
+                v-model="search"
+                prepend-inner-icon="mdi-magnify"
+                label="Buscar proveedores"
+                single-line
+                hide-details
+                density="compact"
+                style="max-width: 400px;"
+                clearable
+              />
+              <VBtn color="primary" @click="dialog = true">
+                <VIcon start>mdi-plus</VIcon>
+                Nuevo Proveedor
+              </VBtn>
+            </div>
+
+            <VAlert v-if="error" type="error" dismissible @click:close="error = ''">
+              {{ error }}
+            </VAlert>
+
+            <VDataTable
+              :headers="headers"
+              :items="proveedoresFiltrados"
+              :loading="loading"
+              loading-text="Cargando proveedores..."
+              no-data-text="No hay proveedores registrados"
+              class="elevation-1"
+            >
           <template #item.estado_cuenta="{ item }">
             <VChip
               v-if="item.resumen_cuenta"
@@ -432,10 +456,22 @@ onMounted(() => {
             </div>
           </template>
         </VDataTable>
-      </VCardText>
-    </VCard>
+      </VWindowItem>
 
-    <!-- Dialog para crear/editar -->
+      <!-- TAB 2: Pagos a Proveedores -->
+      <VWindowItem value="pagos">
+        <ProveedoresPagos />
+      </VWindowItem>
+
+      <!-- TAB 3: Cheques Emitidos -->
+      <VWindowItem value="cheques">
+        <ProveedoresChequesEmitidos />
+      </VWindowItem>
+    </VWindow>
+  </VCardText>
+</VCard>
+
+<!-- Dialog para crear/editar -->
     <VDialog v-model="dialog" max-width="600px">
       <VCard>
         <VCardTitle>
@@ -715,4 +751,3 @@ onMounted(() => {
     </VDialog>
   </div>
 </template>
-

@@ -21,7 +21,7 @@ class UserProfileResource extends JsonResource
             'id' => $this->id,
             'nombre' => $this->nombre,
             'email' => $this->email,
-            'avatar' => $this->avatar ? \Storage::disk('public')->url($this->avatar) : null,
+            'avatar' => $this->avatar ? asset('storage/' . $this->avatar) : null,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
             
