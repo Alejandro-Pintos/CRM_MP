@@ -153,17 +153,26 @@ const hideTitleAndIcon = configStore.isVerticalNavMini(isHovered)
 .app-logo {
   display: flex;
   align-items: center;
-  column-gap: 0.5rem;
+  column-gap: 0.75rem;
+  max-width: 100%;
 
   .app-logo-title {
-    font-size: 1.125rem;
-    font-weight: 600;
-    line-height: 1.5rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.3rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    letter-spacing: 0.3px;
+    white-space: normal;
+    word-break: break-word;
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+// Ajuste para cuando el nav está colapsado
+.layout-vertical-nav-collapsed .layout-vertical-nav:not(.hovered) {
+  .app-logo-title {
+    display: none;
   }
 }
 </style>
