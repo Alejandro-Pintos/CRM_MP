@@ -54,6 +54,18 @@ class Cliente extends Model
         return $this->hasMany(Pedido::class, 'cliente_id');
     }
 
+    // Relación con Ventas
+    public function ventas()
+    {
+        return $this->hasMany(Venta::class, 'cliente_id');
+    }
+
+    // Relación con Cheques
+    public function cheques()
+    {
+        return $this->hasMany(Cheque::class, 'cliente_id');
+    }
+
     // Relación con Movimientos de Cuenta Corriente
     public function movimientosCuentaCorriente()
     {
