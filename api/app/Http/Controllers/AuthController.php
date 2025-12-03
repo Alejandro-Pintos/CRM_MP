@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
+use App\Http\Resources\UserProfileResource;
 
 class AuthController extends Controller
 {
@@ -32,23 +33,23 @@ class AuthController extends Controller
     // POST /api/v1/me  (según tu route:list)
     public function me(Request $request)
     {
-        $user = auth('api')->user();
+        try {
+            $user = auth('api')->user();
 
-        if (!$user) {
-            return response()->json(['message' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+            if (!$user) {
+                return response()->json([
+                    'message' => 'Token inválido o expirado'
+                ], Response::HTTP_UNAUTHORIZED);
+            }
+
+            // Usar el Resource para formatear la respuesta
+            return new UserProfileResource($user);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Token inválido o expirado',
+                'error' => $e->getMessage()
+            ], Response::HTTP_UNAUTHORIZED);
         }
-
-        $payload = $user->toArray();
-
-        //  usa Spatie\Permission, agrega roles/permisos si existen
-        if (method_exists($user, 'getRoleNames')) {
-            $payload['roles'] = $user->getRoleNames();
-        }
-        if (method_exists($user, 'getAllPermissions')) {
-            $payload['permissions'] = $user->getAllPermissions()->pluck('name');
-        }
-
-        return response()->json($payload, Response::HTTP_OK);
     }
 
     // POST /api/v1/logout

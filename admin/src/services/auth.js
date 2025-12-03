@@ -35,3 +35,65 @@ export async function getMe() {
   if (data) localStorage.setItem('userData', JSON.stringify(data))
   return data
 }
+
+/**
+ * Actualizar datos básicos del perfil (nombre, email)
+ */
+export async function updateProfile(profileData) {
+  const data = await apiFetch('/api/v1/profile', {
+    method: 'PUT',
+    body: profileData,
+  })
+  
+  // Actualizar localStorage con los nuevos datos
+  if (data?.data) {
+    localStorage.setItem('userData', JSON.stringify(data.data))
+  }
+  
+  return data
+}
+
+/**
+ * Cambiar contraseña del usuario autenticado
+ */
+export async function updatePassword(passwordData) {
+  return await apiFetch('/api/v1/profile/password', {
+    method: 'PUT',
+    body: passwordData,
+  })
+}
+
+/**
+ * Actualizar avatar del perfil
+ */
+export async function updateAvatar(file) {
+  const formData = new FormData()
+  formData.append('avatar', file)
+  
+  // Para FormData, no usar apiFetch directamente porque necesita configuración especial
+  const token = localStorage.getItem('accessToken')
+  const API = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
+  
+  const res = await fetch(`${API}/api/v1/profile/avatar`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData, // NO añadir Content-Type, fetch lo hace automáticamente para FormData
+  })
+  
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: 'Error al subir avatar' }))
+    throw new Error(error.message || 'Error al subir avatar')
+  }
+  
+  const data = await res.json()
+  
+  // Actualizar localStorage con la nueva URL del avatar
+  if (data?.data) {
+    localStorage.setItem('userData', JSON.stringify(data.data))
+  }
+  
+  return data
+}

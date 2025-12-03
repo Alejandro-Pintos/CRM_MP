@@ -44,25 +44,34 @@ export async function apiFetch(path, { method = 'GET', body, headers = {} } = {}
   if (!res.ok) {
     // Si es 401 (No autenticado), limpiar sesión y redirigir al login
     if (res.status === 401) {
-      console.warn('[apiFetch] 401 Unauthorized - Limpiando sesión y redirigiendo al login')
+      console.warn('[apiFetch] 401 Unauthorized - Limpiando sesión')
       
       localStorage.removeItem('accessToken')
       localStorage.removeItem('userData')
       localStorage.removeItem('sessionStartTime')
       localStorage.removeItem('lastActivity')
       
-      // Crear error antes de redirigir
-      const error = new Error('Sesión expirada. Por favor, inicia sesión nuevamente.')
-      error.status = 401
-      error.requiresLogin = true
-      
-      // Redirigir al login después de un pequeño delay para permitir que el error se propague
+      // Solo redirigir si NO estamos en login
       if (window.location.pathname !== '/login') {
+        console.log('[apiFetch] Redirigiendo a /login')
+        
+        // Crear error antes de redirigir
+        const error = new Error('Sesión expirada. Por favor, inicia sesión nuevamente.')
+        error.status = 401
+        error.requiresLogin = true
+        
+        // Redirigir al login
         setTimeout(() => {
           window.location.href = '/login'
         }, 100)
+        
+        throw error
       }
       
+      // Si ya estamos en login, solo lanzar error sin mensaje
+      const error = new Error('No autorizado')
+      error.status = 401
+      error.requiresLogin = true
       throw error
     }
     

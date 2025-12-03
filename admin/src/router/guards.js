@@ -68,7 +68,8 @@ export const setupGuards = router => {
     let user = userDataString ? JSON.parse(userDataString) : null;
 
     // Si el usuario existe pero no tiene roles/permisos, actualizar desde API
-    if (user && token && (!user.roles || !user.permissions)) {
+    // IMPORTANTE: No intentar refrescar si vamos a una página pública (evita errores de sesión expirada en login)
+    if (user && token && (!user.roles || !user.permissions) && !publicPages.includes(to.name)) {
       const updatedUser = await refreshUserData(token);
       if (updatedUser) {
         user = updatedUser;

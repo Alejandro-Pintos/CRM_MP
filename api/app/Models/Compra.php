@@ -12,7 +12,7 @@ class Compra extends Model
     protected $table = 'compras';
 
     protected $fillable = [
-        'cliente_id',
+        'proveedor_id',
         'fecha_compra',
         'estado',
         'metodo_pago',
@@ -23,9 +23,17 @@ class Compra extends Model
         'observaciones',
     ];
 
-    public function cliente()
+    protected $casts = [
+        'fecha_compra' => 'datetime',
+        'subtotal' => 'decimal:2',
+        'descuento_global' => 'decimal:2',
+        'impuestos_total' => 'decimal:2',
+        'monto_total' => 'decimal:2',
+    ];
+
+    public function proveedor()
     {
-        return $this->belongsTo(Cliente::class, 'cliente_id');
+        return $this->belongsTo(Proveedor::class, 'proveedor_id');
     }
 
     public function detalles()

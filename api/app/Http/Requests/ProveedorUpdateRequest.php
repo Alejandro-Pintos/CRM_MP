@@ -7,7 +7,14 @@ use App\Models\Proveedor;
 
 class ProveedorUpdateRequest extends FormRequest
 {
-    public function authorize(): bool { return true; }
+    public function authorize(): bool
+    {
+        $proveedor = $this->route('proveedor');
+        if ($proveedor instanceof Proveedor) {
+            return $this->user()->can('update', $proveedor);
+        }
+        return $this->user()->can('update', Proveedor::findOrFail($proveedor));
+    }
 
     public function rules(): array
     {

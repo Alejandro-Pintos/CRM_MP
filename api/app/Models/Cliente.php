@@ -74,8 +74,8 @@ class Cliente extends Model
             ->sum('debe'); // Cliente DEBE dinero (ventas a crédito)
         
         $haber = $this->movimientosCuentaCorriente()
-            ->where('tipo', 'pago')
-            ->sum('haber'); // Cliente HA PAGADO (abonos)
+            ->whereIn('tipo', ['pago', 'cancelacion'])
+            ->sum('haber'); // Cliente HA PAGADO (abonos) + Cancelaciones de deuda
         
         return round($debe - $haber, 2);
     }

@@ -6,7 +6,10 @@ use Illuminate\Validation\Rule;
 
 class ProveedorStoreRequest extends FormRequest
 {
-    public function authorize(): bool { return true; }
+    public function authorize(): bool
+    {
+        return $this->user()->can('create', \App\Models\Proveedor::class);
+    }
 
     public function rules(): array
     {

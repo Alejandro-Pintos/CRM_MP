@@ -27,7 +27,10 @@ class CuentaCorrienteController extends Controller
 
         // === Obtener movimientos desde la tabla MovimientoCuentaCorriente ===
         $query = MovimientoCuentaCorriente::query()
-            ->where('cliente_id', $cliente->id);
+            ->where('cliente_id', $cliente->id)
+            ->with(['venta' => function($q) {
+                $q->withTrashed()->with('items.producto');
+            }]);
 
         if ($desde) $query->whereDate('fecha', '>=', $desde);
         if ($hasta) $query->whereDate('fecha', '<=', $hasta);
@@ -46,12 +49,11 @@ class CuentaCorrienteController extends Controller
                 $debe = (float)$mov->debe;
                 $haber = (float)$mov->haber;
                 
-                // Obtener detalles de la venta si existe
+                // Obtener detalles de la venta si existe (ya cargada con eager loading)
                 $detalles = null;
-                if ($mov->tipo === 'venta' && $mov->referencia_id) {
-                    $venta = \App\Models\Venta::withTrashed()->with('items.producto')->find($mov->referencia_id);
-                    if ($venta && $venta->items) {
-                        $detalles = $venta->items->map(function($detalle) {
+                if ($mov->tipo === 'venta' && $mov->venta) {
+                    if ($mov->venta->items) {
+                        $detalles = $mov->venta->items->map(function($detalle) {
                             return [
                                 'producto' => $detalle->producto->nombre ?? 'Producto desconocido',
                                 'cantidad' => $detalle->cantidad,

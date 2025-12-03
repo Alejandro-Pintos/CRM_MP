@@ -366,4 +366,64 @@ class CuentaCorrienteService
         
         return array_values($deudaPorVenta);
     }
+
+    /**
+     * Cancela la deuda de una venta eliminada.
+     * 
+     * INVARIANTE: Crea movimiento de reversión para auditoría.
+     * INVARIANTE: Actualiza saldo del cliente automáticamente.
+     * INVARIANTE: Es idempotente (no falla si ya fue cancelada).
+     * 
+     * @param Venta $venta
+     * @return void
+     */
+    public function cancelarDeudaPorVenta(Venta $venta): void
+    {
+        DB::transaction(function () use ($venta) {
+            $cliente = Cliente::lockForUpdate()->findOrFail($venta->cliente_id);
+            
+            // Buscar movimiento de deuda original
+            $movimientoOriginal = MovimientoCuentaCorriente::where('venta_id', $venta->id)
+                ->where('tipo', 'venta')
+                ->first();
+            
+            if (!$movimientoOriginal) {
+                \Log::warning("No se encontró movimiento CC para venta #{$venta->id}. Cancelación omitida.");
+                return;
+            }
+            
+            // Verificar si ya fue cancelada
+            $yaCancelada = MovimientoCuentaCorriente::where('venta_id', $venta->id)
+                ->where('tipo', 'cancelacion')
+                ->exists();
+            
+            if ($yaCancelada) {
+                \Log::info("Venta #{$venta->id} ya fue cancelada previamente.");
+                return;
+            }
+            
+            // Crear movimiento de reversión (HABER)
+            MovimientoCuentaCorriente::create([
+                'cliente_id' => $cliente->id,
+                'venta_id' => $venta->id,
+                'tipo' => 'cancelacion',
+                'monto' => $movimientoOriginal->monto,
+                'debe' => 0,
+                'haber' => $movimientoOriginal->monto,
+                'fecha' => now(),
+                'descripcion' => "Cancelación de Venta #{$venta->id} (eliminada)",
+            ]);
+            
+            // Recalcular saldo del cliente
+            $cliente->recalcularSaldo();
+            
+            \Log::info('Deuda cancelada en CC', [
+                'venta_id' => $venta->id,
+                'cliente_id' => $cliente->id,
+                'monto_cancelado' => $movimientoOriginal->monto,
+                'saldo_anterior' => $cliente->saldo_actual + $movimientoOriginal->monto,
+                'saldo_nuevo' => $cliente->saldo_actual,
+            ]);
+        });
+    }
 }

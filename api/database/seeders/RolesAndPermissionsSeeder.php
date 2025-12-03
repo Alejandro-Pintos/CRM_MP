@@ -18,7 +18,9 @@ class RolesAndPermissionsSeeder extends Seeder
         $clientes = ['clientes.index','clientes.store','clientes.update','clientes.destroy'];
         $productos = ['productos.index','productos.store','productos.update','productos.destroy'];
         $proveedores = ['proveedores.index','proveedores.store','proveedores.update','proveedores.destroy'];
+        $empleados = ['empleados.index','empleados.store','empleados.update','empleados.destroy'];
         $usuarios = ['usuarios.index','usuarios.store','usuarios.update','usuarios.destroy'];
+        $usuariosGestion = ['users.manage', 'users.create', 'users.edit', 'users.delete'];
         $roles = ['roles.index','roles.store','roles.update','roles.destroy'];
         $permisos = ['permisos.index','permisos.store','permisos.update','permisos.destroy'];
         $ventas = ['ventas.index', 'ventas.store', 'ventas.show'];
@@ -31,7 +33,22 @@ class RolesAndPermissionsSeeder extends Seeder
 
 
         // 3) Crear (si no existen) todos los permisos con guard 'api'
-        $TodosLosPermisos = array_merge($clientes, $productos, $proveedores, $usuarios, $roles, $permisos, $ventas, $pagos, $metodosPago, $ctaCte, $reportes, $reportesExport);
+        $TodosLosPermisos = array_merge(
+            $clientes, 
+            $productos, 
+            $proveedores,
+            $empleados,
+            $usuarios, 
+            $usuariosGestion,
+            $roles, 
+            $permisos, 
+            $ventas, 
+            $pagos, 
+            $metodosPago, 
+            $ctaCte, 
+            $reportes, 
+            $reportesExport
+        );
         foreach ($TodosLosPermisos as $permiso) {
             Permission::firstOrCreate(['name' => $permiso, 'guard_name' => 'api']);
         }

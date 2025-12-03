@@ -222,6 +222,30 @@ class ChequeService
     }
 
     /**
+     * Alias para marcarComoCobrado (compatibilidad con tests)
+     */
+    public function cobrarCheque(Cheque $cheque, ?string $fechaCobro = null): Cheque
+    {
+        return $this->marcarComoCobrado($cheque, $fechaCobro);
+    }
+
+    /**
+     * Alias para marcarComoRechazado (compatibilidad con tests)
+     */
+    public function rechazarCheque(Cheque $cheque, ?string $motivoRechazo = null): Cheque
+    {
+        return $this->marcarComoRechazado($cheque, $motivoRechazo);
+    }
+
+    /**
+     * Alias para actualizarDatos (compatibilidad con tests)
+     */
+    public function editarCheque(Cheque $cheque, array $data): Cheque
+    {
+        return $this->actualizarDatos($cheque, $data);
+    }
+
+    /**
      * Obtiene cheques pendientes con alertas de vencimiento.
      * 
      * @param int $diasAlerta Días antes del vencimiento para marcar como alerta

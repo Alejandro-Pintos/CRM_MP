@@ -13,8 +13,7 @@ return new class extends Migration {
             $table->dateTime('fecha_pago')->nullable();
             $table->timestamps();
 
-            $table->index('venta_id');
-            $table->index('metodo_pago_id');
+            // NOTA: Laravel 12 crea índices automáticamente en foreign keys
             $table->foreign('venta_id')->references('id')->on('ventas')->onDelete('cascade');
             $table->foreign('metodo_pago_id')->references('id')->on('metodos_pago');
         });

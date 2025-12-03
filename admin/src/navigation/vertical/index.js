@@ -78,6 +78,11 @@ export default [
     to: '/proveedores',
     icon: { icon: 'ri-contacts-line' },
   },
+  {
+    title: 'Empleados',
+    to: '/empleados',
+    icon: { icon: 'ri-team-line' },
+  },
 
   // === ANÁLISIS Y REPORTES ===
   {

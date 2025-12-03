@@ -8,8 +8,7 @@ class StoreClienteRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Cualquier usuario autenticado puede usarlo (Spatie maneja permisos)
-        return true;
+        return $this->user()->can('create', \App\Models\Cliente::class);
     }
 
     public function rules(): array

@@ -31,6 +31,12 @@ class DatabaseSeeder extends Seeder
             'proveedores.store',
             'proveedores.update',
             'proveedores.destroy',
+            // Pagos a Proveedores
+            'proveedores.pagos.index',
+            'proveedores.pagos.store',
+            'proveedores.pagos.destroy',
+            // Estado de Cuenta Proveedores
+            'proveedores.cuenta.index',
             // Ventas
             'ventas.index',
             'ventas.store',
@@ -48,6 +54,15 @@ class DatabaseSeeder extends Seeder
             'pagos.store',
             // Cuenta Corriente
             'cta_cte.show',
+            // Empleados
+            'empleados.index',
+            'empleados.store',
+            'empleados.update',
+            'empleados.destroy',
+            // Pagos de Empleados
+            'empleados.pagos.index',
+            'empleados.pagos.store',
+            'empleados.pagos.destroy',
             // Reportes
             'reportes.index',
             'reportes.clientes',

@@ -35,10 +35,10 @@ return new class extends Migration
             $table->timestamps();
             
             // Índices para mejorar rendimiento
-            $table->index(['cliente_id', 'estado']);
-            $table->index(['venta_id']);
-            $table->index(['fecha_vencimiento']);
-            $table->index(['estado', 'fecha_vencimiento']);
+            // NOTA: venta_id ya tiene índice por foreignId()->constrained()
+            $table->index(['cliente_id', 'estado'], 'cheques_cliente_estado_index');
+            $table->index(['fecha_vencimiento'], 'cheques_fecha_venc_index');
+            $table->index(['estado', 'fecha_vencimiento'], 'cheques_estado_fecha_index');
         });
     }
 

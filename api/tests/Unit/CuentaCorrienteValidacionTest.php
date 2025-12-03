@@ -5,7 +5,9 @@ namespace Tests\Unit;
 use Tests\TestCase;
 use App\Models\Cliente;
 use App\Models\Venta;
+use App\Models\Usuario;
 use App\Models\MovimientoCuentaCorriente;
+use App\Services\Finanzas\CuentaCorrienteService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class CuentaCorrienteValidacionTest extends TestCase
@@ -211,5 +213,185 @@ class CuentaCorrienteValidacionTest extends TestCase
         $this->expectExceptionMessage('DATOS CORRUPTOS');
 
         $cliente->recalcularSaldo();
+    }
+
+    /**
+     * Test #6: cancelarDeudaPorVenta crea movimiento de reversión
+     */
+    public function test_cancelar_deuda_por_venta()
+    {
+        $service = app(CuentaCorrienteService::class);
+
+        $usuario = Usuario::create([
+            'nombre' => 'Admin',
+            'apellido' => 'Test',
+            'email' => 'admin@test.com',
+            'password' => bcrypt('password'),
+        ]);
+
+        $cliente = Cliente::create([
+            'nombre' => 'Cliente',
+            'apellido' => 'Test',
+            'limite_credito' => 5000000,
+            'saldo_actual' => 0,
+        ]);
+
+        $venta = Venta::create([
+            'cliente_id' => $cliente->id,
+            'usuario_id' => $usuario->id,
+            'total' => 1000000,
+            'estado' => 'pagada',
+            'fecha' => now(),
+        ]);
+
+        // Crear movimiento de deuda
+        MovimientoCuentaCorriente::create([
+            'cliente_id' => $cliente->id,
+            'venta_id' => $venta->id,
+            'tipo' => 'venta',
+            'debe' => 1000000,
+            'haber' => 0,
+            'monto' => 1000000,
+            'fecha' => now(),
+            'descripcion' => 'Venta a crédito',
+        ]);
+        
+        $cliente->update(['saldo_actual' => 1000000]);
+        $cliente->refresh();
+        $this->assertEquals(1000000, $cliente->saldo_actual);
+
+        // Cancelar deuda
+        $service->cancelarDeudaPorVenta($venta);
+
+        // Verificar que existe movimiento de reversión (HABER) con tipo 'cancelacion'
+        $movimientos = MovimientoCuentaCorriente::where('venta_id', $venta->id)->get();
+        $this->assertCount(2, $movimientos); // Debe + Haber (reversión)
+        
+        $reversion = $movimientos->where('haber', '>', 0)->first();
+        $this->assertNotNull($reversion);
+        $this->assertEquals('cancelacion', $reversion->tipo);
+        $this->assertEquals(1000000, $reversion->haber);
+
+        // ✅ CORREGIDO: El saldo ahora SÍ se recalcula correctamente
+        $cliente->refresh();
+        $this->assertEquals(0, $cliente->saldo_actual);
+    }
+
+    /**
+     * Test #7: registrarPagoPorCheque reduce deuda correctamente
+     */
+    public function test_registrar_pago_por_cheque()
+    {
+        $service = app(CuentaCorrienteService::class);
+
+        $usuario = Usuario::create([
+            'nombre' => 'Admin',
+            'apellido' => 'Test',
+            'email' => 'admin2@test.com',
+            'password' => bcrypt('password'),
+        ]);
+
+        $cliente = Cliente::create([
+            'nombre' => 'Cliente',
+            'apellido' => 'Cheque',
+            'limite_credito' => 5000000,
+            'saldo_actual' => 2000000, // Deuda inicial
+        ]);
+
+        $venta = Venta::create([
+            'cliente_id' => $cliente->id,
+            'usuario_id' => $usuario->id,
+            'total' => 2000000,
+            'estado' => 'pagada',
+            'fecha' => now(),
+        ]);
+
+        // Crear deuda inicial
+        MovimientoCuentaCorriente::create([
+            'cliente_id' => $cliente->id,
+            'venta_id' => $venta->id,
+            'tipo' => 'venta',
+            'debe' => 2000000,
+            'haber' => 0,
+            'monto' => 2000000,
+            'fecha' => now(),
+            'descripcion' => 'Venta inicial',
+        ]);
+
+        // Registrar pago por cheque de $800K
+        $movimiento = $service->registrarPagoPorCheque(
+            clienteId: $cliente->id,
+            ventaId: $venta->id,
+            monto: 800000,
+            fecha: now(),
+            observaciones: 'Cheque #12345'
+        );
+
+        $this->assertNotNull($movimiento);
+        $this->assertEquals(800000, $movimiento->haber);
+        $this->assertEquals(0, $movimiento->debe);
+        $this->assertEquals('pago', $movimiento->tipo);
+
+        // Verificar saldo actualizado
+        $cliente->refresh();
+        $this->assertEquals(1200000, $cliente->saldo_actual); // 2M - 800K
+    }
+
+    /**
+     * Test #8: calcularDeudaCCVenta retorna deuda pendiente correcta
+     */
+    public function test_calcular_deuda_cc_venta()
+    {
+        $service = app(CuentaCorrienteService::class);
+
+        $usuario = Usuario::create([
+            'nombre' => 'Admin',
+            'apellido' => 'Test',
+            'email' => 'admin3@test.com',
+            'password' => bcrypt('password'),
+        ]);
+
+        $cliente = Cliente::create([
+            'nombre' => 'Cliente',
+            'apellido' => 'Deuda',
+            'limite_credito' => 5000000,
+            'saldo_actual' => 0,
+        ]);
+
+        $venta = Venta::create([
+            'cliente_id' => $cliente->id,
+            'usuario_id' => $usuario->id,
+            'total' => 1500000,
+            'estado' => 'pagada',
+            'fecha' => now(),
+        ]);
+
+        // Crear movimiento deuda $1.5M
+        MovimientoCuentaCorriente::create([
+            'cliente_id' => $cliente->id,
+            'venta_id' => $venta->id,
+            'tipo' => 'venta',
+            'debe' => 1500000,
+            'haber' => 0,
+            'monto' => 1500000,
+            'fecha' => now(),
+            'descripcion' => 'Venta a crédito',
+        ]);
+
+        // Crear pago parcial $600K
+        MovimientoCuentaCorriente::create([
+            'cliente_id' => $cliente->id,
+            'venta_id' => $venta->id,
+            'tipo' => 'pago',
+            'debe' => 0,
+            'haber' => 600000,
+            'monto' => -600000,
+            'fecha' => now(),
+            'descripcion' => 'Pago parcial',
+        ]);
+
+        // Verificar deuda pendiente = $900K
+        $deudaPendiente = $service->calcularDeudaCCVenta($venta->id);
+        $this->assertEquals(900000, $deudaPendiente);
     }
 }

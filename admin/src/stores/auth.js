@@ -28,10 +28,13 @@ export const useAuthStore = defineStore('auth', {
 
       this.setToken(token)
 
-      // Obtener perfil
+      // Obtener perfil completo del usuario
       try {
-        this.user = res?.user ?? (await getMe())
-      } catch {
+        const response = await getMe()
+        // Laravel Resources envuelven la respuesta en { data: {...} }
+        this.user = response?.data ?? response?.user ?? response
+      } catch (error) {
+        console.warn('No se pudo cargar el perfil del usuario:', error)
         this.user = null
       }
 

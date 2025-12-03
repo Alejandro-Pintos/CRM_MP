@@ -9,6 +9,7 @@ use App\Models\ComprobanteNumeracion;
 use App\Services\VentaService;
 use App\Services\Ventas\RegistrarVentaService;
 use App\Services\Ventas\ResumenPagosVentaService;
+use App\Services\Finanzas\CuentaCorrienteService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -30,7 +31,12 @@ class VentaController extends Controller
         $hasta    = $request->date('hasta');
         $perPage  = $request->input('per_page', 15);
 
-        $query = Venta::with(['items', 'cliente', 'pagos'])->orderByDesc('fecha');
+        $query = Venta::with([
+            'items.producto',       // Evita N+1 al mostrar nombres de productos
+            'cliente',
+            'pagos.metodoPago',     // Evita N+1 al mostrar métodos de pago
+            'cheques',              // Incluye cheques asociados
+        ])->orderByDesc('fecha');
 
         if ($qCliente) $query->where('cliente_id', $qCliente);
         if ($estado && $estado->isNotEmpty()) $query->where('estado_pago', $estado);
@@ -92,7 +98,12 @@ class VentaController extends Controller
 
     public function show(Venta $venta)
     {
-        $venta->load(['items', 'pagos']);
+        $venta->load([
+            'items.producto',
+            'pagos.metodoPago',
+            'cheques',
+            'cliente',
+        ]);
         return new VentaResource($venta);
     }
 
@@ -113,62 +124,32 @@ class VentaController extends Controller
 
     /**
      * Eliminar una venta.
-     * Elimina en cascada: pagos, items, movimientos de cuenta corriente y ajusta saldo del cliente.
+     * Cancela la deuda en cuenta corriente y elimina registros asociados.
      */
-    public function destroy(Venta $venta)
+    public function destroy(Venta $venta, CuentaCorrienteService $cuentaCorrienteService)
     {
+        // Validar autorización con policy
+        $this->authorize('delete', $venta);
+
         try {
             \DB::beginTransaction();
 
-            // 1. Obtener información antes de eliminar
-            $cliente = $venta->cliente;
-            
-            // 2. Calcular el monto en cuenta corriente ANTES de eliminar los pagos
-            $montoCuentaCorriente = 0;
-            if ($cliente) {
-                $montoCuentaCorriente = $venta->pagos()
-                    ->whereHas('metodoPago', function($q) {
-                        $q->where('nombre', 'Cuenta Corriente');
-                    })
-                    ->sum('monto');
-            }
+            // 1. Cancelar deuda en cuenta corriente usando servicio centralizado
+            // Esto crea automáticamente el movimiento de reversión y actualiza saldo
+            $cuentaCorrienteService->cancelarDeudaPorVenta($venta);
 
-            // 3. Ajustar saldo del cliente si hay monto en cuenta corriente
-            if ($montoCuentaCorriente > 0 && $cliente) {
-                // Restar el monto que estaba en cuenta corriente (lógica original)
-                $cliente->saldo_actual = (float)$cliente->saldo_actual - $montoCuentaCorriente;
-                $cliente->save();
-                
-                \Log::info("Venta #{$venta->id} eliminada. Cliente #{$cliente->id}: Saldo ajustado de " . 
-                          ($cliente->saldo_actual + $montoCuentaCorriente) . " a {$cliente->saldo_actual}");
-                
-                // Crear movimiento de reversión/cancelación para auditoría
-                \App\Models\MovimientoCuentaCorriente::create([
-                    'cliente_id' => $cliente->id,
-                    'tipo' => 'pago',
-                    'referencia_id' => $venta->id,
-                    'monto' => $montoCuentaCorriente,
-                    'debe' => 0,
-                    'haber' => abs($montoCuentaCorriente),  // Reversión = HABER (reduce deuda)
-                    'fecha' => now(),
-                    'descripcion' => "Cancelación de venta #{$venta->id}" . 
-                                   ($venta->numero_comprobante ? " - {$venta->tipo_comprobante} {$venta->numero_comprobante}" : ''),
-                ]);
-            }
-
-            // 4. NO eliminar movimientos de cuenta corriente - mantener historial de auditoría
-            // Los movimientos antiguos se mantienen, y se agregó uno nuevo de reversión arriba
-
-            // 5. Eliminar pagos asociados (incluyendo cheques)
+            // 2. Eliminar pagos asociados
             $venta->pagos()->delete();
 
-            // 6. Eliminar items de venta
+            // 3. Eliminar items de venta
             $venta->items()->delete();
             
-            // 7. Eliminar la venta (soft delete)
+            // 4. Eliminar la venta
             $venta->delete();
 
             \DB::commit();
+
+            \Log::info("Venta #{$venta->id} eliminada correctamente");
 
             return response()->json([
                 'message' => 'Venta eliminada correctamente'
@@ -176,7 +157,11 @@ class VentaController extends Controller
 
         } catch (\Exception $e) {
             \DB::rollBack();
-            \Log::error('Error al eliminar venta: ' . $e->getMessage());
+            \Log::error('Error al eliminar venta: ' . $e->getMessage(), [
+                'venta_id' => $venta->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'message' => 'Error al eliminar la venta: ' . $e->getMessage()
             ], 500);

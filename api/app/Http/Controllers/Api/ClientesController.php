@@ -70,6 +70,8 @@ class ClientesController extends Controller
 
     public function destroy(Cliente $cliente)
     {
+        $this->authorize('delete', $cliente);
+        
         $cliente->delete();
         return response()->noContent(); // <- 204 No Content
     }

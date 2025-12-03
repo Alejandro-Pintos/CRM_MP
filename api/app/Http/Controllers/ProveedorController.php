@@ -63,7 +63,10 @@ class ProveedorController extends Controller
 
     public function destroy(int $id)
     {
-        Proveedor::findOrFail($id)->delete();
+        $proveedor = Proveedor::findOrFail($id);
+        $this->authorize('delete', $proveedor);
+        
+        $proveedor->delete();
         return response()->noContent();
     }
 }

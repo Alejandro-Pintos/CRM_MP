@@ -17,6 +17,15 @@ class ProveedorResource extends JsonResource
             'telefono'  => $this->telefono,
             'email'     => $this->email,
             'estado'    => $this->estado,
+            
+            // Resumen de estado de cuenta (solo cuando se carga la relación)
+            'total_compras' => $this->whenLoaded('compras', function() {
+                return (float) $this->compras->where('estado', '!=', 'anulado')->sum('monto_total');
+            }),
+            'total_pagos' => $this->whenLoaded('pagos', function() {
+                return (float) $this->pagos->sum('monto');
+            }),
+            
             'created_at'=> $this->created_at,
             'updated_at'=> $this->updated_at,
         ];
