@@ -5,10 +5,26 @@ import { login as apiLogin, getMe } from '@/services/auth' // ✅ Usar el servic
 const TOKEN_KEY = 'crmmp:token'
 
 export const useAuthStore = defineStore('auth', {
-  state: () => ({
-    token: localStorage.getItem(TOKEN_KEY) || null,
-    user: JSON.parse(localStorage.getItem('userData') || 'null'),
-  }),
+  state: () => {
+    const token = localStorage.getItem(TOKEN_KEY) || null
+    const userDataStr = localStorage.getItem('userData')
+    let user = null
+    
+    try {
+      if (userDataStr) {
+        user = JSON.parse(userDataStr)
+        console.log('✅ Usuario cargado desde localStorage:', user)
+      }
+    } catch (e) {
+      console.error('❌ Error al parsear userData:', e)
+      localStorage.removeItem('userData')
+    }
+    
+    return {
+      token,
+      user,
+    }
+  },
   getters: {
     isAuthenticated: s => !!s.token,
   },
@@ -20,11 +36,14 @@ export const useAuthStore = defineStore('auth', {
     },
 
     setUser(user) {
+      console.log('📝 setUser llamado con:', user)
       this.user = user
       if (user) {
         localStorage.setItem('userData', JSON.stringify(user))
+        console.log('✅ Usuario guardado en localStorage')
       } else {
         localStorage.removeItem('userData')
+        console.log('🗑️ Usuario eliminado de localStorage')
       }
     },
 

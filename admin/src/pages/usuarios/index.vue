@@ -4,6 +4,12 @@ import { useRouter } from 'vue-router'
 import { getUsers, deleteUser } from '@/services/users'
 import { useAuthStore } from '@/stores/auth'
 
+definePage({
+  meta: {
+    requiresAuth: true,
+  },
+})
+
 const router = useRouter()
 const authStore = useAuthStore()
 

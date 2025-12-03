@@ -28,11 +28,24 @@ onMounted(async () => {
 // Datos del usuario autenticado
 const currentUser = computed(() => {
   const user = authStore.user
-  return {
+  console.log('👤 UserProfile - authStore.user:', user)
+  
+  // Extraer rol (puede ser string o objeto)
+  let role = 'Usuario'
+  if (user?.roles && user.roles.length > 0) {
+    const firstRole = user.roles[0]
+    role = typeof firstRole === 'string' ? firstRole : firstRole?.name || 'Usuario'
+    console.log('🎭 Rol detectado:', role, '(tipo:', typeof firstRole, ')')
+  }
+  
+  const userData = {
     name: user?.nombre || 'Usuario',
-    role: user?.roles?.[0] || 'Usuario',
+    role: role,
     avatar: user?.avatar || avatar1,
   }
+  
+  console.log('📊 currentUser final:', userData)
+  return userData
 })
 
 // Menú de usuario con opciones relevantes para el CRM
