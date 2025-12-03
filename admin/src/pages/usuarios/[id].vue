@@ -107,7 +107,7 @@ async function cargarUsuario() {
   } catch (error) {
     console.error('Error al cargar usuario:', error)
     alert('Error al cargar el usuario')
-    router.push({ name: 'usuarios-index' })
+    router.push({ name: 'usuarios' })
   } finally {
     loading.value = false
   }
@@ -137,7 +137,7 @@ async function guardar() {
       await createUser(payload)
     }
     
-    router.push({ name: 'usuarios-index' })
+    router.push({ name: 'usuarios' })
   } catch (error) {
     console.error('Error al guardar usuario:', error)
     
@@ -153,7 +153,7 @@ async function guardar() {
 }
 
 function cancelar() {
-  router.push({ name: 'usuarios-index' })
+  router.push({ name: 'usuarios' })
 }
 
 // Lifecycle

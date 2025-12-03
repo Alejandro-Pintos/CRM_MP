@@ -99,16 +99,6 @@ const userProfileList = computed(() => {
         size: 'small',
       } : null,
     },
-    
-    { type: 'divider' },
-    
-    // Configuración de cuenta (solo para admin/contador)
-    ...(hasPermission('configuracion.ver') ? [{
-      type: 'navItem',
-      icon: 'ri-settings-4-line',
-      title: 'Configuración',
-      to: { name: 'dashboard' }, // TODO: cambiar a ruta de configuración cuando exista
-    }] : []),
   ]
   
   return items.filter(item => item !== null)

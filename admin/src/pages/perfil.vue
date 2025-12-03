@@ -250,7 +250,7 @@ const formatearFecha = (fecha) => {
 }
 
 function irAGestionUsuarios() {
-  router.push({ name: 'usuarios-index' })
+  router.push({ name: 'usuarios' })
 }
 
 onMounted(cargarPerfil)
