@@ -231,6 +231,26 @@ const formatDate = (date) => {
                 :loading="loading"
                 :disabled="loading"
               >
+                <VIcon icon="mdi-filter" start />
+                Filtrar
+              </VBtn>
+              <VTooltip text="Limpiar filtros">
+                <template #activator="{ props }">
+                  <VBtn 
+                    variant="outlined" 
+                    @click="limpiarFiltros" 
+                    icon="mdi-filter-remove"
+                    :disabled="loading"
+                    v-bind="props"
+                  />
+                </template>
+              </VTooltip>
+            </VCol>
+          </VRow>
+        </VCardText>
+      </VCard>
+    </VCol>
+
     <!-- Resumen -->
     <VCol cols="12">
       <VRow>
@@ -290,26 +310,6 @@ const formatDate = (date) => {
           </VCard>
         </VCol>
       </VRow>
-    </VCol>Col>
-
-        <VCol cols="12" md="3">
-          <VCard color="success" variant="tonal">
-            <VCardText>
-              <div class="text-caption">Debitados</div>
-              <div class="text-h4 mt-1">{{ resumen.debitados || 0 }}</div>
-            </VCardText>
-          </VCard>
-        </VCol>
-
-        <VCol cols="12" md="3">
-          <VCard color="primary" variant="tonal">
-            <VCardText>
-              <div class="text-caption">Monto Total</div>
-              <div class="text-h4 mt-1">{{ formatPrice(resumen.monto_total || 0) }}</div>
-            </VCardText>
-          </VCard>
-        </VCol>
-      </VRow>
     </VCol>
 
     <!-- Tabla -->
@@ -320,6 +320,25 @@ const formatDate = (date) => {
         :loading="loading"
         loading-text="Cargando cheques..."
         no-data-text="No hay cheques emitidos registrados"
+      >
+        <template #item.monto="{ item }">
+          {{ formatPrice(item.monto) }}
+        </template>
+
+        <template #item.fecha_emision="{ item }">
+          {{ formatDate(item.fecha_emision) }}
+        </template>
+
+        <template #item.fecha_vencimiento="{ item }">
+          {{ formatDate(item.fecha_vencimiento) }}
+        </template>
+
+        <template #item.estado="{ item }">
+          <VChip :color="getEstadoColor(item.estado)" size="small">
+            {{ item.estado }}
+          </VChip>
+        </template>
+
         <template #item.actions="{ item }">
           <div class="d-flex gap-1">
             <VTooltip v-if="item.estado === 'pendiente'" text="Marcar como debitado">
@@ -367,26 +386,6 @@ const formatDate = (date) => {
             <VChip v-if="item.estado !== 'pendiente'" size="small" variant="flat" color="grey-lighten-2">
               Sin acciones
             </VChip>
-          </div>
-        </template>"item.estado === 'pendiente'"
-              size="small"
-              color="error"
-              variant="tonal"
-              @click="marcarAnulado(item)"
-              title="Anular cheque"
-            >
-              <VIcon icon="mdi-close" />
-            </VBtn>
-            <VBtn
-              v-if="item.estado === 'pendiente' && !item.pago_proveedor_id"
-              size="small"
-              color="grey"
-              variant="text"
-              @click="eliminarCheque(item)"
-              title="Eliminar cheque"
-            >
-              <VIcon icon="mdi-delete" />
-            </VBtn>
           </div>
         </template>
       </VDataTable>
