@@ -1,5 +1,15 @@
-export const staticPrimaryColor = '#666CFF'
-export const staticPrimaryDarkenColor = '#5C61E6'
+// ACTUAL (Índigo)
+export const staticPrimaryColor = '#3F51B5'
+
+// OPCIONES (descomenta la que quieras):
+// export const staticPrimaryColor = '#10B981' // 🟢 Verde Esmeralda
+// export const staticPrimaryColor = '#0EA5E9' // 🔵 Azul Sky
+// export const staticPrimaryColor = '#8B5CF6' // 🟣 Púrpura
+// export const staticPrimaryColor = '#F59E0B' // 🟠 Naranja
+// export const staticPrimaryColor = '#EC4899' // 🔴 Rosa
+
+export const staticPrimaryDarkenColor = '#303F9F'
+
 export const themes = {
   light: {
     dark: false,
@@ -91,10 +101,10 @@ export const themes = {
       'error': '#FF4D49',
       'error-darken-1': '#E64542',
       'on-error': '#fff',
-      'background': '#282A42',
-      'on-background': '#EAEAFF',
-      'surface': '#30334E',
-      'on-surface': '#EAEAFF',
+      'background': '#16161E', // Un fondo más oscuro y neutro
+      'on-background': '#EAEAFF', // Texto claro para contraste
+      'surface': '#1E1E28', // Superficie para cards, ligeramente más clara
+      'on-surface': '#EAEAFF', // Texto claro para contraste
       'grey-50': '#2A2E42',
       'grey-100': '#2F3349',
       'grey-200': '#4A5072',

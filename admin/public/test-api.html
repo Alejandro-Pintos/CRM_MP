@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API Connection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-result {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Test de Conexión API</h1>
+    
+    <div>
+        <h3>Configuración:</h3>
+        <p><strong>API URL:</strong> <span id="api-url">http://127.0.0.1:8000</span></p>
+        <p><strong>Token:</strong> <span id="token-status">No autenticado</span></p>
+    </div>
+
+    <hr>
+
+    <h3>Acciones:</h3>
+    <button onclick="testConnection()">Test Conexión</button>
+    <button onclick="testVentas()">Test GET /ventas</button>
+    <button onclick="clearResults()">Limpiar</button>
+
+    <hr>
+
+    <div id="results"></div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:8000';
+        
+        function getToken() {
+            return localStorage.getItem('accessToken');
+        }
+
+        function updateTokenStatus() {
+            const token = getToken();
+            document.getElementById('token-status').textContent = token ? '✅ Autenticado' : '❌ No autenticado';
+        }
+
+        async function testConnection() {
+            addResult('info', '🔍 Probando conexión al servidor...');
+            
+            try {
+                const response = await fetch(`${API_URL}/api/v1/clientes?per_page=1`);
+                
+                if (response.ok) {
+                    addResult('success', '✅ Servidor respondiendo correctamente');
+                    const data = await response.json();
+                    addResult('success', `Respuesta: ${JSON.stringify(data, null, 2)}`);
+                } else if (response.status === 401) {
+                    addResult('error', '❌ Error 401: No autenticado. Necesitas iniciar sesión.');
+                } else {
+                    addResult('error', `❌ Error ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                addResult('error', `❌ Error de conexión: ${error.message}`);
+                addResult('error', 'Verifica que el servidor Laravel esté corriendo en http://127.0.0.1:8000');
+            }
+        }
+
+        async function testVentas() {
+            addResult('info', '🔍 Probando endpoint /api/v1/ventas...');
+            
+            const token = getToken();
+            
+            try {
+                const response = await fetch(`${API_URL}/api/v1/ventas?per_page=10`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult('success', `✅ ${data.data ? data.data.length : 0} ventas encontradas`);
+                    addResult('success', `<pre>${JSON.stringify(data, null, 2)}</pre>`);
+                } else if (response.status === 401) {
+                    addResult('error', '❌ Error 401: No autenticado');
+                    addResult('error', 'Inicia sesión en el frontend primero: http://localhost:5174/login');
+                } else {
+                    const errorData = await response.json().catch(() => ({ message: response.statusText }));
+                    addResult('error', `❌ Error ${response.status}: ${JSON.stringify(errorData, null, 2)}`);
+                }
+            } catch (error) {
+                addResult('error', `❌ Error: ${error.message}`);
+            }
+        }
+
+        function addResult(type, message) {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type === 'success' ? 'success' : 'error'}`;
+            resultDiv.innerHTML = message;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // Actualizar estado al cargar
+        updateTokenStatus();
+        setInterval(updateTokenStatus, 1000);
+    </script>
+</body>
+</html>

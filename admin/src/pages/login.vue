@@ -1,14 +1,13 @@
 <script setup>
+definePage({ name: 'login', meta: { layout: 'blank', public: true } })
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useGenerateImageVariant } from '@/@core/composable/useGenerateImageVariant'
-import AuthProvider from '@/views/pages/authentication/AuthProvider.vue'
-import authV2LoginIllustrationBorderedDark from '@images/pages/auth-v2-login-illustration-bordered-dark.png'
-import authV2LoginIllustrationBorderedLight from '@images/pages/auth-v2-login-illustration-bordered-light.png'
-import authV2LoginIllustrationDark from '@images/pages/auth-v2-login-illustration-dark.png'
-import authV2LoginIllustrationLight from '@images/pages/auth-v2-login-illustration-light.png'
-import authV2LoginMaskDark from '@images/pages/auth-v2-login-mask-dark.png'
-import authV2LoginMaskLight from '@images/pages/auth-v2-login-mask-light.png'
-import { VNodeRenderer } from '@layouts/components/VNodeRenderer'
-import { themeConfig } from '@themeConfig'
+import authV1LoginMaskLight from '@images/pages/auth-v1-login-mask-light.png'
+import { useAuth } from '@/composables/useAuth'
+
+const router = useRouter()
+const { login, loading, error } = useAuth()
 
 const form = ref({
   email: '',
@@ -16,154 +15,215 @@ const form = ref({
   remember: false,
 })
 
-definePage({ meta: { layout: 'blank' } })
+const errorMsg = ref(null)
 
+async function onSubmit() {
+  errorMsg.value = null
+  
+  try {
+    await login(form.value.email, form.value.password)
+    // La redirección se maneja en useAuth
+  } catch (err) {
+    errorMsg.value = err.message || 'Error al iniciar sesión'
+    console.error('Error en login:', err)
+  }
+}
+const authV1ThemeLoginMask = useGenerateImageVariant(authV1LoginMaskLight)
 const isPasswordVisible = ref(false)
-const authV2LoginMask = useGenerateImageVariant(authV2LoginMaskLight, authV2LoginMaskDark)
-const authV2LoginIllustration = useGenerateImageVariant(authV2LoginIllustrationLight, authV2LoginIllustrationDark, authV2LoginIllustrationBorderedLight, authV2LoginIllustrationBorderedDark, true)
 </script>
 
 <template>
-  <RouterLink to="/">
-    <div class="app-logo auth-logo">
-      <VNodeRenderer :nodes="themeConfig.app.logo" />
-      <h1 class="app-logo-title">
-        {{ themeConfig.app.title }}
-      </h1>
-    </div>
-  </RouterLink>
-
-  <VRow
-    no-gutters
-    class="auth-wrapper"
-  >
-    <VCol
-      md="8"
-      class="d-none d-md-flex align-center justify-center position-relative"
-    >
-      <div class="d-flex align-center justify-center pa-10">
-        <img
-          :src="authV2LoginIllustration"
-          class="auth-illustration w-100"
-          alt="auth-illustration"
-        >
+  <div class="auth-split">
+    <!-- Mitad izquierda -->
+    <div class="left-half">
+      <div class="left-overlay">
+        
       </div>
-      <VImg
-        :src="authV2LoginMask"
-        class="d-none d-md-flex auth-footer-mask"
-        alt="auth-mask"
-      />
-    </VCol>
-    <VCol
-      cols="12"
-      md="4"
-      class="auth-card-v2 d-flex align-center justify-center"
-      style="background-color: rgb(var(--v-theme-surface));"
-    >
-      <VCard
-        flat
-        :max-width="500"
-        class="mt-12 mt-sm-0 pa-5 pa-lg-7"
+    </div>
+
+    <!-- Mitad derecha -->
+    <div class="right-half">
+      <VCard 
+        class="auth-card pa-6"
+        :color="$vuetify.theme.current.dark ? 'surface' : 'background'"
       >
+        <!-- Logo y título -->
+        <VCardTitle class="text-center pb-4">
+          <h4 class="text-h4">Bienvenido 👋</h4>
+          <p class="mt-2">Inicia sesión para acceder</p>
+        </VCardTitle>
+
+        <!-- Formulario -->
         <VCardText>
-          <h4 class="text-h4 mb-1">
-            Welcome to <span class="text-capitalize">{{ themeConfig.app.title }}! 👋🏻</span>
-          </h4>
+          <form @submit.prevent="onSubmit">
+            <VTextField
+              v-model="form.email"
+              label="Email"
+              type="email"
+              placeholder="usuario@correo.com"
+              class="mb-3"
+              required
+            />
 
-          <p class="mb-0">
-            Please sign-in to your account and start the adventure
-          </p>
-        </VCardText>
+            <VTextField
+              v-model="form.password"
+              label="Contraseña"
+              :type="isPasswordVisible ? 'text' : 'password'"
+              :append-inner-icon="isPasswordVisible ? 'ri-eye-off-line' : 'ri-eye-line'"
+              @click:append-inner="isPasswordVisible = !isPasswordVisible"
+              class="mb-3"
+              required
+            />
 
-        <VCardText>
-          <VForm @submit.prevent="() => {}">
-            <VRow>
-              <!-- email -->
-              <VCol cols="12">
-                <VTextField
-                  v-model="form.email"
-                  autofocus
-                  label="Email"
-                  type="email"
-                  placeholder="johndoe@email.com"
-                />
-              </VCol>
+            <VCheckbox
+              v-model="form.remember"
+              label="Recordarme"
+              class="mb-3"
+            />
 
-              <!-- password -->
-              <VCol cols="12">
-                <VTextField
-                  v-model="form.password"
-                  label="Password"
-                  placeholder="············"
-                  :type="isPasswordVisible ? 'text' : 'password'"
-                  :append-inner-icon="isPasswordVisible ? 'ri-eye-off-line' : 'ri-eye-line'"
-                  @click:append-inner="isPasswordVisible = !isPasswordVisible"
-                />
+            <VBtn 
+              block 
+              color="primary"
+              type="submit"
+              :loading="loading"
+              class="mb-6"
+            >
+              Iniciar sesión
+            </VBtn>
+            
 
-                <!-- remember me checkbox -->
-                <div class="d-flex align-center justify-space-between flex-wrap my-6 gap-x-2">
-                  <VCheckbox
-                    v-model="form.remember"
-                    label="Remember me"
-                  />
+            <!-- Mensajes de error/éxito -->
+            <VAlert
+              v-if="errorMsg"
+              type="error"
+              variant="tonal"
+              class="mb-3"
+            >
+              {{ errorMsg }}
+            </VAlert>
 
-                  <a
-                    class="text-primary"
-                    href="#"
-                  >
-                    Forgot Password?
-                  </a>
-                </div>
-
-                <!-- login button -->
-                <VBtn
-                  block
-                  type="submit"
-                >
-                  Login
-                </VBtn>
-              </VCol>
-
-              <!-- create account -->
-              <VCol
-                cols="12"
-                class="text-body-1 text-center"
+            <!-- Agregar esto después de los alerts -->
+            <div class="text-center mt-4">
+              <VDivider class="mb-4">
+                <span class="mx-2">O</span>
+              </VDivider>
+              
+            </div>
+            <div class="d-flex justify-center mb-3">
+              <RouterLink
+                :to="{ name: 'forgot-password' }"
+                class="text-body-2"
               >
-                <span class="d-inline-block">
-                  New on our platform?
-                </span>
-                <a
-                  class="text-primary ms-1 d-inline-block text-body-1"
-                  href="#"
-                >
-                  Create an account
-                </a>
-              </VCol>
-
-              <VCol
-                cols="12"
-                class="d-flex align-center"
-              >
-                <VDivider />
-                <span class="mx-4 text-high-emphasis">or</span>
-                <VDivider />
-              </VCol>
-
-              <!-- auth providers -->
-              <VCol
-                cols="12"
-                class="text-center"
-              >
-                <AuthProvider />
-              </VCol>
-            </VRow>
-          </VForm>
+                ¿Olvidaste tu contraseña?
+              </RouterLink>
+            </div>
+          </form>
         </VCardText>
       </VCard>
-    </VCol>
-  </VRow>
+    </div>
+  </div>
 </template>
 
-<style lang="scss">
-@use "@core/scss/template/pages/page-auth.scss";
+<style scoped>
+.auth-split {
+  display: flex;
+  height: 100vh; /* Cambiado de min-height a height */
+  overflow: hidden; /* Previene scroll en desktop */
+}
+
+.left-half {
+  position: relative; /* Cambiado de absolute a relative */
+  flex: 2;
+  height: 100vh; /* Asegura altura completa */
+  overflow: hidden; /* Previene scroll */
+}
+
+.left-overlay {
+  position: relative;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.right-half {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  height: 100%; /* Asegura altura completa */
+  overflow-y: auto; /* Permite scroll si el contenido es muy alto */
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  transform: none;
+  transition: box-shadow 0.3s ease;
+  border: 3px solid rgba(var(--v-theme-primary), 0.1);
+  /* Simplificamos las sombras */
+  box-shadow: 
+    0 4px 12px rgba(69, 132, 248, 0.1),
+    0 0 0 1px rgba(var(--v-theme-primary), 0.05);
+  /* Aseguramos que el texto se vea nítido */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  backface-visibility: hidden;
+}
+
+/* Efecto hover simplificado */
+.auth-card:hover {
+  /* Solo cambiamos la sombra, sin transformaciones 3D */
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(var(--v-theme-primary), 0.08);
+}
+
+/* Ajuste para modo oscuro */
+:deep(.v-theme--dark) .auth-card {
+  border-color: rgba(255, 255, 255, 0.05);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+:deep(.v-theme--dark) .auth-card:hover {
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 959px) {
+  .auth-split {
+    position: relative;
+    display: block;
+  }
+  
+  .left-half {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+    width: 100%;
+  }
+  
+  .right-half {
+    position: relative;
+    z-index: 1;
+    padding: 1rem;
+    height: 100%; /* Ocupa toda la altura para centrar la card */
+  }
+
+  .auth-card {
+    max-height: none;
+    margin: 1rem 0;
+    background-color: rgba(var(--v-theme-surface), 0.95) !important;
+    /* Aseguramos que no haya filtros que causen desenfoque en móvil */
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+}
 </style>

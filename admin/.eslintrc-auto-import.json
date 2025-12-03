@@ -350,6 +350,26 @@
     "watchThrottled": true,
     "watchTriggerable": true,
     "watchWithFilter": true,
-    "whenever": true
+    "whenever": true,
+    "DirectiveBinding": true,
+    "MaybeRef": true,
+    "MaybeRefOrGetter": true,
+    "onWatcherCleanup": true,
+    "useId": true,
+    "useModel": true,
+    "useTemplateRef": true,
+    "useAuth": true,
+    "adjustColorBrightness": true,
+    "hexToRgb": true,
+    "isColorDark": true,
+    "rgbToHex": true,
+    "useDashboardTheme": true,
+    "DashboardTheme": true,
+    "advancedThemePlugin": true,
+    "designTokens": true,
+    "useAdvancedTheme": true,
+    "useErrorHandler": true,
+    "useNumberFormat": true,
+    "vNumberFormat": true
   }
 }

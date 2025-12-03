@@ -1,0 +1,36 @@
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class UpdateClienteRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        $cliente = $this->route('cliente');
+        return $this->user()->can('update', $cliente);
+    }
+
+    public function rules(): array
+    {
+        // Obtenemos el id del cliente que se está actualizando
+        $id = $this->route('cliente')->id;
+
+        return [
+            'nombre' => 'required|string|max:150',
+            'apellido' => 'nullable|string|max:150',
+            'email' => 'nullable|email|max:150|unique:clientes,email,' . $id,
+            'telefono' => 'nullable|string|max:50',
+            'direccion' => 'nullable|string|max:255',
+            'ciudad' => 'nullable|string|max:150',
+            'provincia' => 'nullable|string|max:150',
+            'cuit_cuil' => 'nullable|string|max:50|unique:clientes,cuit_cuil,' . $id,
+            'fecha_registro' => 'nullable|date',
+            'fecha_ultima_compra' => 'nullable|date',
+            'estado' => 'nullable|string|max:50',
+            'saldo_actual' => 'nullable|numeric',
+            'limite_credito' => 'nullable|numeric|min:0',
+        ];
+    }
+}

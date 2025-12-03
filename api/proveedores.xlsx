@@ -1,0 +1,22 @@
+HTTP/1.1 302 Found
+Host: 127.0.0.1:8000
+Connection: close
+X-Powered-By: PHP/8.2.29
+Cache-Control: no-cache, private
+Date: Fri, 17 Oct 2025 22:21:51 GMT
+Location: http://127.0.0.1:8000
+Content-Type: text/html; charset=utf-8
+Vary: Origin
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="refresh" content="0;url='http://127.0.0.1:8000'" />
+
+        <title>Redirecting to http://127.0.0.1:8000</title>
+    </head>
+    <body>
+        Redirecting to <a href="http://127.0.0.1:8000">http://127.0.0.1:8000</a>.
+    </body>
+</html>

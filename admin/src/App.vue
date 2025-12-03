@@ -1,6 +1,7 @@
 <script setup>
 import { useTheme } from 'vuetify'
 import ScrollToTop from '@core/components/ScrollToTop.vue'
+import ToastContainer from '@/components/ToastContainer.vue'
 import initCore from '@core/initCore'
 import {
   initConfigStore,
@@ -24,6 +25,7 @@ const configStore = useConfigStore()
       <RouterView />
 
       <ScrollToTop />
+      <ToastContainer />
     </VApp>
   </VLocaleProvider>
 </template>

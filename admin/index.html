@@ -5,8 +5,12 @@
   <meta charset="UTF-8" />
   <link rel="icon" href="/favicon.ico" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Materialize - Vuejs Admin Template</title>
+  <title>E.R.P MADERAS PANI</title>
   <link rel="stylesheet" type="text/css" href="/loader.css" />
+  
+  <!-- Librerías para exportar PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 
 <body>
@@ -48,8 +52,8 @@
   </div>
   <script type="module" src="/src/main.js"></script>
   <script>
-    const loaderColor = localStorage.getItem('materialize-initial-loader-bg') || '#FFFFFF'
-    const primaryColor = localStorage.getItem('materialize-initial-loader-color') || '#666CFF'
+    const loaderColor = localStorage.getItem('maderas-pani-initial-loader-bg') || '#FFFFFF'
+    const primaryColor = localStorage.getItem('maderas-pani-initial-loader-color') || '#666CFF'
 
     if (loaderColor)
       document.documentElement.style.setProperty('--initial-loader-bg', loaderColor)
