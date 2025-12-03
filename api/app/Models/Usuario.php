@@ -42,6 +42,32 @@ class Usuario extends Authenticatable implements JWTSubject
         return [];
     }
 
+    // ===== MÉTODOS DE COMPATIBILIDAD PARA PERMISOS =====
+    
+    /**
+     * Método de compatibilidad con código legado.
+     * Delega en el método oficial de Spatie hasPermissionTo().
+     * 
+     * @param string|int|\Spatie\Permission\Contracts\Permission $permission
+     * @param string|null $guardName
+     * @return bool
+     */
+    public function hasPermission($permission, $guardName = null): bool
+    {
+        return $this->hasPermissionTo($permission, $guardName);
+    }
+
+    /**
+     * Verifica si el usuario tiene cualquiera de los permisos especificados.
+     * 
+     * @param array $permissions
+     * @return bool
+     */
+    public function hasAnyPermissionCompat(...$permissions): bool
+    {
+        return $this->hasAnyPermission($permissions);
+    }
+
     // (Opcional) helpers de relaciones útiles para reportes:
     // public function ventas() { return $this->hasMany(Venta::class, 'usuario_id'); }
 }

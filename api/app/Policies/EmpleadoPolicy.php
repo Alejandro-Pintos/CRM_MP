@@ -12,7 +12,7 @@ class EmpleadoPolicy
      */
     public function viewAny(Usuario $usuario): bool
     {
-        return $usuario->hasPermission('empleados.ver');
+        return $usuario->hasPermission('empleados.index');
     }
 
     /**
@@ -25,7 +25,7 @@ class EmpleadoPolicy
             return true;
         }
 
-        return $usuario->hasPermission('empleados.ver');
+        return $usuario->hasPermission('empleados.index');
     }
 
     /**
@@ -34,7 +34,7 @@ class EmpleadoPolicy
     public function create(Usuario $usuario): bool
     {
         // Solo admin o usuarios con permiso específico
-        return $usuario->hasRole('admin') || $usuario->hasPermission('empleados.crear');
+        return $usuario->hasRole('admin') || $usuario->hasPermission('empleados.store');
     }
 
     /**
@@ -51,7 +51,7 @@ class EmpleadoPolicy
             return true; // Validar qué campos pueden editar en FormRequest
         }
 
-        return $usuario->hasPermission('empleados.editar');
+        return $usuario->hasPermission('empleados.update');
     }
 
     /**

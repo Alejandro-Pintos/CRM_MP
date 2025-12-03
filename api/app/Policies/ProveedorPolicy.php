@@ -12,7 +12,7 @@ class ProveedorPolicy
      */
     public function viewAny(Usuario $usuario): bool
     {
-        return $usuario->hasPermission('proveedores.ver');
+        return $usuario->hasPermission('proveedores.index');
     }
 
     /**
@@ -20,7 +20,7 @@ class ProveedorPolicy
      */
     public function view(Usuario $usuario, Proveedor $proveedor): bool
     {
-        return $usuario->hasPermission('proveedores.ver');
+        return $usuario->hasPermission('proveedores.index');
     }
 
     /**
@@ -28,7 +28,7 @@ class ProveedorPolicy
      */
     public function create(Usuario $usuario): bool
     {
-        return $usuario->hasPermission('proveedores.crear');
+        return $usuario->hasPermission('proveedores.store');
     }
 
     /**
@@ -40,7 +40,7 @@ class ProveedorPolicy
             return true;
         }
 
-        return $usuario->hasPermission('proveedores.editar');
+        return $usuario->hasPermission('proveedores.update');
     }
 
     /**

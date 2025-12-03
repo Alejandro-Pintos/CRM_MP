@@ -12,7 +12,7 @@ class ClientePolicy
      */
     public function viewAny(Usuario $usuario): bool
     {
-        return $usuario->hasPermission('clientes.ver');
+        return $usuario->hasPermission('clientes.index');
     }
 
     /**
@@ -20,7 +20,7 @@ class ClientePolicy
      */
     public function view(Usuario $usuario, Cliente $cliente): bool
     {
-        return $usuario->hasPermission('clientes.ver');
+        return $usuario->hasPermission('clientes.index');
     }
 
     /**
@@ -28,7 +28,7 @@ class ClientePolicy
      */
     public function create(Usuario $usuario): bool
     {
-        return $usuario->hasPermission('clientes.crear');
+        return $usuario->hasPermission('clientes.store');
     }
 
     /**
@@ -42,7 +42,7 @@ class ClientePolicy
         }
 
         // Usuarios regulares solo si tienen permiso
-        return $usuario->hasPermission('clientes.editar');
+        return $usuario->hasPermission('clientes.update');
     }
 
     /**

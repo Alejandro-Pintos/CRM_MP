@@ -223,7 +223,7 @@ const formatDate = (date) => {
               />
             </VCol>
 
-            <VCol cols="12" md="2" class="d-flex gap-2">
+            <VCol cols="12" md="2">
               <VBtn 
                 color="primary" 
                 @click="aplicarFiltros" 
@@ -234,15 +234,20 @@ const formatDate = (date) => {
                 <VIcon icon="mdi-filter" start />
                 Filtrar
               </VBtn>
+            </VCol>
+
+            <VCol cols="12" md="1" class="d-flex align-center">
               <VTooltip text="Limpiar filtros">
                 <template #activator="{ props }">
                   <VBtn 
-                    variant="outlined" 
-                    @click="limpiarFiltros" 
-                    icon="mdi-filter-remove"
+                    variant="tonal" 
+                    @click="limpiarFiltros"
                     :disabled="loading"
                     v-bind="props"
-                  />
+                    icon
+                  >
+                    <VIcon icon="mdi-filter-remove" />
+                  </VBtn>
                 </template>
               </VTooltip>
             </VCol>
