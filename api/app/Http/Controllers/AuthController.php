@@ -24,10 +24,20 @@ class AuthController extends Controller
         ]);
 
         if (!$token = auth('api')->attempt($validated)) {
-            return response()->json(['message' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+            return response()->json([
+                'message' => 'Email o contraseña incorrectos'
+            ], Response::HTTP_UNAUTHORIZED);
         }
 
-        return $this->respondWithToken($token);
+        // Obtener el usuario autenticado
+        $user = auth('api')->user();
+
+        return response()->json([
+            'access_token' => $token,
+            'token_type'   => 'bearer',
+            'expires_in'   => auth('api')->factory()->getTTL() * 60,
+            'user'         => new UserProfileResource($user), // Incluir datos del usuario
+        ]);
     }
 
     // POST /api/v1/me  (según tu route:list)

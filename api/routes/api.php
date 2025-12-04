@@ -21,6 +21,11 @@ use App\Http\Controllers\Api\ProfileController;
 
 Route::prefix('v1')->middleware('auth:api')->group(function () {
 
+    // === AUTENTICACIÓN ===
+    Route::post('me', [AuthController::class, 'me'])->name('me');
+    Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+    Route::post('refresh', [AuthController::class, 'refresh'])->name('refresh');
+
     // === GESTIÓN DE PERFIL DEL USUARIO AUTENTICADO ===
     Route::get('profile', [ProfileController::class, 'show'])->name('profile.show');
     Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');
