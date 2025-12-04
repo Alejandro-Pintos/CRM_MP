@@ -139,9 +139,31 @@ const fetchStats = async () => {
     const data = await getDashboardStats()
     stats.value = data
   } catch (e) {
-    const errorMsg = e.message || 'Error al cargar estadísticas'
+    console.error('[Dashboard] Error cargando estadísticas:', e)
+    
+    let errorMsg = 'Error al cargar estadísticas del dashboard'
+    
+    // Mensajes específicos según el tipo de error
+    if (e.isNotJSON) {
+      errorMsg = `Error del servidor: El backend devolvió HTML en lugar de JSON. Esto indica un error 500 o una configuración incorrecta. Por favor contacta al administrador del sistema.`
+    } else if (e.isNetworkError) {
+      errorMsg = `No se pudo conectar al servidor. Verifica tu conexión a Internet y que el backend esté funcionando.`
+    } else if (e.status === 401) {
+      errorMsg = 'Sesión expirada. Redirigiendo al login...'
+    } else if (e.status === 403) {
+      errorMsg = 'No tienes permisos para ver el dashboard'
+    } else if (e.message) {
+      errorMsg = e.message
+    }
+    
     error.value = errorMsg
     toast.error(errorMsg)
+    
+    // Log adicional para debugging
+    if (e.isNotJSON) {
+      console.error('[Dashboard] Content-Type recibido:', e.contentType)
+      console.error('[Dashboard] Respuesta (primeros 500 chars):', e.responseText?.substring(0, 500))
+    }
   } finally {
     loading.value = false
   }

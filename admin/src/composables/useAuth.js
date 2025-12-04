@@ -15,14 +15,44 @@ export function useAuth() {
     loading.value = true
     error.value = null
     try {
+      console.log('[useAuth] Iniciando login para:', email)
       const res = await apiLogin({ email, password })
+      console.log('[useAuth] Login exitoso, respuesta:', res)
+      
       token.value = localStorage.getItem('accessToken')
-      user.value = res?.user ?? await getMe().catch(() => null)
-      // 🔁 redirección post login (ajusta a la ruta que exista en tu app)
+      console.log('[useAuth] Token guardado:', token.value ? '✓' : '✗')
+      
+      // Obtener datos del usuario
+      if (res?.user) {
+        user.value = res.user
+        console.log('[useAuth] Usuario desde respuesta:', user.value)
+      } else {
+        console.log('[useAuth] Obteniendo usuario desde /me...')
+        user.value = await getMe().catch(() => null)
+        console.log('[useAuth] Usuario desde /me:', user.value)
+      }
+      
+      console.log('[useAuth] Redirigiendo a dashboard...')
+      // Redirección post login
       router.replace({ name: 'dashboard' })
     } catch (e) {
-      error.value = e?.message || 'Error al iniciar sesión'
-      throw e
+      console.error('[useAuth] Error en login:', e)
+      
+      // Mensajes de error más específicos
+      let errorMessage = 'Error al iniciar sesión'
+      
+      if (e.status === 401 || e.status === 422) {
+        errorMessage = 'Email o contraseña incorrectos'
+      } else if (e.isNetworkError) {
+        errorMessage = 'No se pudo conectar al servidor. Verifica tu conexión a Internet.'
+      } else if (e.isNotJSON) {
+        errorMessage = 'Error del servidor: El backend no está respondiendo correctamente. Contacta al administrador.'
+      } else if (e.message) {
+        errorMessage = e.message
+      }
+      
+      error.value = errorMessage
+      throw new Error(errorMessage)
     } finally {
       loading.value = false
     }

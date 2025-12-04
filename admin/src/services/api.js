@@ -116,7 +116,48 @@ export async function apiFetch(path, { method = 'GET', body, headers = {} } = {}
   }
   
   // algunas rutas pueden devolver 204
-  return res.status === 204 ? null : res.json()
+  if (res.status === 204) {
+    return null
+  }
+  
+  // CRÍTICO: Verificar Content-Type antes de parsear como JSON
+  const contentType = res.headers.get('content-type')
+  console.log('[apiFetch] Success response Content-Type:', contentType)
+  
+  if (!contentType || !contentType.includes('application/json')) {
+    // El servidor devolvió algo que NO es JSON (probablemente HTML)
+    console.error('[apiFetch] CRITICAL: El servidor respondió con un Content-Type no-JSON:', contentType)
+    const textBody = await res.text()
+    console.error('[apiFetch] Response body (first 500 chars):', textBody.substring(0, 500))
+    
+    const error = new Error(
+      `Error del servidor: Se esperaba JSON pero se recibió ${contentType || 'unknown type'}. ` +
+      `Esto usualmente indica un error 500 o una redirección a HTML. ` +
+      `Verifica los logs del backend en: ${API}${path}`
+    )
+    error.status = res.status
+    error.isNotJSON = true
+    error.contentType = contentType
+    error.responseText = textBody
+    
+    throw error
+  }
+  
+  // Parsear JSON de forma segura
+  try {
+    return await res.json()
+  } catch (jsonError) {
+    console.error('[apiFetch] Failed to parse JSON response:', jsonError)
+    const textBody = await res.text().catch(() => '(no se pudo leer el cuerpo)')
+    console.error('[apiFetch] Raw response:', textBody)
+    
+    const error = new Error(`Error parseando respuesta JSON del servidor. Respuesta: ${textBody.substring(0, 200)}`)
+    error.status = res.status
+    error.isJSONParseError = true
+    error.originalError = jsonError
+    
+    throw error
+  }
 }
 
 // Re-exportar useApi desde composables para compatibilidad
