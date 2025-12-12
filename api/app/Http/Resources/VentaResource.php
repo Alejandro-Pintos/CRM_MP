@@ -3,6 +3,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Services\Finanzas\CuentaCorrienteService;
 
 class VentaResource extends JsonResource
 {
@@ -70,7 +71,7 @@ class VentaResource extends JsonResource
         // CRÍTICO: Calcular deuda CC REAL desde movimientos de cuenta corriente
         $deudaCCReal = 0.0;
         try {
-            $service = new \App\Services\CuentaCorrienteService();
+            $service = new CuentaCorrienteService();
             $deudaCCReal = $service->calcularDeudaCCVenta($this->id);
         } catch (\Throwable $e) {
             \Log::error("Error calculando deuda CC de venta #{$this->id}: " . $e->getMessage());

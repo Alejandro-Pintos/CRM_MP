@@ -21,4 +21,6 @@ class MovimientoCuentaCorriente extends Model
     public function cliente() { return $this->belongsTo(Cliente::class, 'cliente_id'); }
     
     public function venta() { return $this->belongsTo(Venta::class, 'venta_id'); }
+    
+    public function metodoPago() { return $this->belongsTo(MetodoPago::class, 'referencia_id'); }
 }

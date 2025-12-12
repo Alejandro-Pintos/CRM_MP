@@ -21,9 +21,38 @@ class PagoController extends Controller
 
     public function index(Venta $venta)
     {
-        return PagoResource::collection(
-            $venta->pagos()->with('metodoPago')->orderByDesc('fecha_pago')->get()
-        );
+        // Obtener pagos de la tabla pagos con información de cheques si aplica
+        $pagos = $venta->pagos()->with(['metodoPago', 'cheque'])->get();
+        
+        // Obtener pagos desde movimientos de cuenta corriente con el método de pago real
+        $movimientosCC = \App\Models\MovimientoCuentaCorriente::where('venta_id', $venta->id)
+            ->where('tipo', 'pago')
+            ->with('metodoPago') // Cargar el método de pago usado (Transferencia, Efectivo, etc.)
+            ->orderBy('fecha', 'desc')
+            ->get();
+        
+        // Convertir movimientos CC a formato de pago mostrando el método REAL usado
+        foreach ($movimientosCC as $mov) {
+            // Crear un objeto Pago virtual para mantener compatibilidad con el frontend
+            $pagoVirtual = new Pago();
+            $pagoVirtual->id = 'cc_' . $mov->id; // ID único
+            $pagoVirtual->venta_id = $venta->id;
+            // Usar el método de pago REAL (el que se usó para pagar la CC)
+            $pagoVirtual->metodo_pago_id = $mov->referencia_id;
+            $pagoVirtual->monto = $mov->haber;
+            $pagoVirtual->fecha_pago = $mov->fecha;
+            $pagoVirtual->created_at = $mov->created_at;
+            $pagoVirtual->updated_at = $mov->updated_at;
+            // Setear la relación con el método de pago real
+            $pagoVirtual->setRelation('metodoPago', $mov->metodoPago);
+            
+            $pagos->push($pagoVirtual);
+        }
+        
+        // Ordenar por fecha descendente
+        $pagos = $pagos->sortByDesc('fecha_pago');
+        
+        return PagoResource::collection($pagos);
     }
 
     /**

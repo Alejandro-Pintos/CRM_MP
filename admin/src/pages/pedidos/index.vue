@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onActivated, computed } from 'vue'
 import { getPedidos, createPedido, updatePedido, deletePedido, getClimaLocal } from '@/services/pedidos'
 import { getClientes } from '@/services/clientes'
 import { getProductos } from '@/services/productos'
@@ -542,6 +542,11 @@ onMounted(() => {
   fetchPedidos()
   fetchClientes()
   fetchProductos()
+})
+
+// Refrescar cuando el componente se reactive (usuario vuelve desde otra vista)
+onActivated(() => {
+  fetchPedidos()
 })
 </script>
 

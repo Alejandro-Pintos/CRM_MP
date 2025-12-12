@@ -247,31 +247,6 @@ const marcarChequeRechazado = async (pago) => {
   }
 }
 
-// Consolidar pagos de una venta
-const consolidarPagos = async () => {
-  if (!selectedVenta.value) return
-  
-  try {
-    loading.value = true
-    toast.info('Consolidando pagos...')
-    
-    const response = await apiFetch(`/api/v1/ventas/${selectedVenta.value.id}/consolidar-pagos`, {
-      method: 'POST',
-    })
-    
-    // Recargar pagos y ventas
-    const data = await getPagosVenta(selectedVenta.value.id)
-    pagosVenta.value = Array.isArray(data) ? data : (data.data ?? [])
-    await fetchVentas()
-    
-    toast.success(response.message || 'Pagos consolidados correctamente')
-  } catch (e) {
-    toast.error('Error al consolidar pagos: ' + (e.message || 'Error desconocido'))
-  } finally {
-    loading.value = false
-  }
-}
-
 const closeDelete = () => {
   dialogDelete.value = false
   error.value = ''
@@ -324,6 +299,18 @@ const totalCuentaCorriente = computed(() => {
   return pagosVenta.value
     .filter(p => p.metodo_pago?.nombre === 'Cuenta Corriente')
     .reduce((sum, p) => sum + parseFloat(p.monto || 0), 0)
+})
+
+// Obtener métodos de pago usados en CC (para mostrar en el resumen)
+const metodosPagoCC = computed(() => {
+  // Buscar pagos que vengan de movimientos CC (tienen id con prefijo 'cc_')
+  const pagosCC = pagosVenta.value.filter(p => 
+    typeof p.id === 'string' && p.id.startsWith('cc_')
+  )
+  
+  // Extraer métodos únicos
+  const metodos = [...new Set(pagosCC.map(p => p.metodo_pago?.nombre).filter(Boolean))]
+  return metodos.join(', ') || 'Cuenta Corriente'
 })
 
 // Calcular saldo actual sin considerar el nuevo pago
@@ -534,15 +521,18 @@ onMounted(async () => {
                     </VCol>
                     <VCol cols="6" md="2">
                       <div class="text-caption">Deuda C.C.</div>
-                      <div class="text-h6 text-info">{{ formatPrice(selectedVenta?.deuda_cc_pendiente || 0) }}</div>
+                      <div class="text-h6 text-info">{{ formatPrice(deudaCCPendiente) }}</div>
                     </VCol>
                     <VCol cols="12" md="4">
                       <div class="text-caption">Saldo Pendiente</div>
                       <div class="text-h6" :class="saldoActual > 0 ? 'text-warning' : 'text-success'">
                         {{ formatPrice(Math.max(0, saldoActual)) }}
                       </div>
-                      <div class="text-caption text-medium-emphasis" style="font-size: 10px;">
+                      <div v-if="saldoActual > 0" class="text-caption text-medium-emphasis" style="font-size: 10px;">
                         (sin asignar)
+                      </div>
+                      <div v-else-if="deudaCCPendiente > 0" class="text-caption text-medium-emphasis" style="font-size: 10px;">
+                        (asignado a C.C.)
                       </div>
                     </VCol>
                   </VRow>
@@ -565,32 +555,9 @@ onMounted(async () => {
             </VCol>
           </VRow>
 
-          <!-- Alerta informativa si hay deuda en cuenta corriente pero está cubierta -->
-          <VAlert 
-            v-if="totalCuentaCorriente > 0 && Math.round(saldoDisponibleParaPagar) <= 0"
-            type="info" 
-            variant="tonal"
-            class="mb-4"
-          >
-            <div class="d-flex align-center justify-space-between">
-              <div>
-                ℹ️ Hay <strong>{{ formatPrice(totalCuentaCorriente) }}</strong> en cuenta corriente, pero la venta está cubierta con pagos reales.
-              </div>
-              <VBtn
-                color="primary"
-                variant="tonal"
-                size="small"
-                @click="consolidarPagos"
-                prepend-icon="ri-check-double-line"
-              >
-                Consolidar Pagos
-              </VBtn>
-            </div>
-          </VAlert>
-
           <!-- Alerta cuando hay cheques pendientes -->
           <VAlert 
-            v-else-if="totalChequesPendientes > 0"
+            v-if="totalChequesPendientes > 0"
             type="warning" 
             variant="tonal"
             class="mb-4"
@@ -606,7 +573,7 @@ onMounted(async () => {
 
           <!-- Alerta cuando está totalmente pagado SIN deuda CC ni cheques pendientes -->
           <VAlert 
-            v-else-if="Math.round(saldoDisponibleParaPagar) <= 0 && totalChequesPendientes === 0" 
+            v-if="Math.round(saldoDisponibleParaPagar) <= 0 && totalChequesPendientes === 0" 
             type="success" 
             variant="tonal"
             class="mb-4"
@@ -616,22 +583,22 @@ onMounted(async () => {
 
           <!-- Alerta informativa si hay deuda en cuenta corriente pendiente -->
           <VAlert 
-            v-else-if="totalCuentaCorriente > 0 && saldoActual > 0"
-            type="warning" 
+            v-if="deudaCCPendiente > 0"
+            type="info" 
             variant="tonal"
             class="mb-4"
           >
             <template v-if="dialogPagosReadOnly">
-              ℹ️ Hay <strong>{{ formatPrice(totalCuentaCorriente) }}</strong> en cuenta corriente (deuda del cliente). 
+              💳 Esta venta tiene <strong>{{ formatPrice(deudaCCPendiente) }}</strong> de deuda en cuenta corriente. 
               Para registrar pagos, diríjase al módulo de <strong>Cuenta Corriente</strong>.
             </template>
             <template v-else>
-              ⚠️ Hay <strong>{{ formatPrice(totalCuentaCorriente) }}</strong> en cuenta corriente (deuda del cliente). 
+              💳 Esta venta tiene <strong>{{ formatPrice(deudaCCPendiente) }}</strong> de deuda en cuenta corriente. 
               Registre pagos para cancelar esta deuda.
             </template>
           </VAlert>
 
-          <!-- Alerta si hay saldo sin asignar -->
+          <!-- Alerta si hay saldo sin asignar (solo cuando NO hay deuda CC) -->
           <VAlert 
             v-else-if="saldoActual > 0"
             type="warning" 
@@ -852,14 +819,25 @@ onMounted(async () => {
                 <td class="text-end text-success">{{ formatPrice(totalChequesCobrados) }}</td>
                 <td colspan="2"></td>
               </tr>
+              <tr v-if="resumenPagos?.total_deuda_cc_original > 0" class="font-weight-medium bg-success-lighten-4">
+                <td class="text-end">└─</td>
+                <td>{{ metodosPagoCC }}</td>
+                <td class="text-muted">Pago desde C.C.</td>
+                <td class="text-end text-success">{{ formatPrice(resumenPagos.total_deuda_cc_original) }}</td>
+                <td>
+                  <VChip
+                    size="small"
+                    :color="resumenPagos.total_deuda_cc > 0 ? 'warning' : 'success'"
+                    variant="tonal"
+                  >
+                    {{ resumenPagos.total_deuda_cc > 0 ? 'Deuda' : 'Pagado' }}
+                  </VChip>
+                </td>
+                <td class="text-muted">-</td>
+              </tr>
               <tr v-if="totalChequesPendientes > 0" class="font-weight-bold bg-warning-lighten-5">
                 <td colspan="3" class="text-end">Cheques Pendientes:</td>
                 <td class="text-end text-warning">{{ formatPrice(totalChequesPendientes) }}</td>
-                <td colspan="2"></td>
-              </tr>
-              <tr v-if="totalCuentaCorriente > 0" class="font-weight-bold bg-info-lighten-5">
-                <td colspan="3" class="text-end">Deuda en Cuenta Corriente:</td>
-                <td class="text-end text-info">{{ formatPrice(totalCuentaCorriente) }}</td>
                 <td colspan="2"></td>
               </tr>
               <tr v-if="saldoActual > 0" class="font-weight-bold bg-warning-lighten-5">

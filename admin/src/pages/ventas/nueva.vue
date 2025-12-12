@@ -274,10 +274,9 @@ const descargarPedido = () => {
 const seleccionarProducto = (producto) => {
   productoSeleccionado.value = producto.id
   busquedaProducto.value = `${producto.nombre} (${producto.codigo})`
-  // Calcular precio + IVA automáticamente (usar precio o precio_venta)
-  const precioVenta = parseFloat(producto.precio || producto.precio_venta || 0)
-  const iva = parseFloat(producto.iva || 0)
-  precioProducto.value = precioVenta * (1 + iva / 100)
+  // IMPORTANTE: Usar precio_total que ya viene calculado desde el backend
+  // precio_total = precio (que ya incluye IVA)
+  precioProducto.value = parseFloat(producto.precio_total || producto.precio || 0)
   mostrarResultadosProducto.value = false
   
   // Focus en el campo de cantidad después de seleccionar
@@ -346,10 +345,9 @@ const cancelarEliminarProducto = () => {
 const onProductoChange = () => {
   const producto = productos.value.find(p => p.id === productoSeleccionado.value)
   if (producto) {
-    // Calcular precio + IVA (usar precio o precio_venta)
-    const precioVenta = parseFloat(producto.precio || producto.precio_venta || 0)
-    const iva = parseFloat(producto.iva || 0)
-    precioProducto.value = precioVenta * (1 + iva / 100)
+    // IMPORTANTE: Usar precio_total que ya viene calculado desde el backend
+    // precio_total = precio (que ya incluye IVA)
+    precioProducto.value = parseFloat(producto.precio_total || producto.precio || 0)
   }
 }
 
@@ -933,7 +931,7 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
                       density="compact"
                       variant="outlined"
                       readonly
-                      hint="Calculado automáticamente: P. Venta + IVA"
+                      hint="Precio del producto desde la base de datos"
                       persistent-hint
                       :disabled="!productoSeleccionado"
                     />

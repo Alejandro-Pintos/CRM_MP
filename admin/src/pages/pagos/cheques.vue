@@ -130,9 +130,7 @@ const chequesFiltrados = computed(() => {
   } else if (filtroEstado.value === 'alertas') {
     resultado = resultado.filter(c => c.proximo_a_vencer)
   } else if (filtroEstado.value === 'normales') {
-    resultado = resultado.filter(c => !c.vencido && !c.proximo_a_vencer && c.estado_alerta !== 'sin_fecha')
-  } else if (filtroEstado.value === 'sin_fecha') {
-    resultado = resultado.filter(c => c.estado_alerta === 'sin_fecha')
+    resultado = resultado.filter(c => !c.vencido && !c.proximo_a_vencer)
   }
 
   // Búsqueda
@@ -313,8 +311,7 @@ const getEstadoLabel = (estado) => {
   const labels = {
     'vencido': 'Vencido',
     'alerta': 'Próximo a vencer',
-    'normal': 'Normal',
-    'sin_fecha': 'Sin fecha definida'
+    'normal': 'Normal'
   }
   return labels[estado] || estado
 }
@@ -444,26 +441,7 @@ onMounted(() => {
         </VCard>
       </VCol>
       
-      <VCol cols="12" sm="6" md="3">
-        <VCard 
-          class="pa-4"
-          :class="{ 'border-info': filtroEstado === 'sin_fecha' }"
-          hover
-          @click="filtroEstado = 'sin_fecha'"
-          style="cursor: pointer;"
-        >
-          <div class="d-flex align-center justify-space-between">
-            <div>
-              <div class="text-caption text-medium-emphasis mb-1">Sin fecha</div>
-              <div class="text-h4 font-weight-bold text-info">{{ resumen.sin_fecha || 0 }}</div>
-              <div class="text-caption">Requieren fecha</div>
-            </div>
-            <VAvatar color="info" variant="tonal" size="48">
-              <VIcon size="28">ri-question-line</VIcon>
-            </VAvatar>
-          </div>
-        </VCard>
-      </VCol>
+
     </VRow>
 
     <!-- Tabla de cheques con pestañas -->
@@ -513,7 +491,6 @@ onMounted(() => {
               <VChip value="vencidos" color="error" variant="outlined">Vencidos</VChip>
               <VChip value="alertas" color="warning" variant="outlined">Próximos a vencer</VChip>
               <VChip value="normales" color="success" variant="outlined">Normales</VChip>
-              <VChip value="sin_fecha" color="info" variant="outlined">Sin fecha</VChip>
             </VChipGroup>
           </VCardText>
 

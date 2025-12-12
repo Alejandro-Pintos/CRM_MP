@@ -5,6 +5,7 @@ use App\Models\Cliente;
 use App\Models\Venta;
 use App\Models\Pago;
 use App\Models\MovimientoCuentaCorriente;
+use App\Services\Finanzas\CuentaCorrienteService;
 use Illuminate\Http\Request;
 
 class CuentaCorrienteController extends Controller
@@ -197,9 +198,9 @@ class CuentaCorrienteController extends Controller
         }
         
         // Usar el servicio para distribuir el pago FIFO
-        $service = new \App\Services\CuentaCorrienteService();
+        $service = new CuentaCorrienteService();
         
-        $resultado = $service->registrarPagoCliente(
+        $resultado = $service->registrarPagoDesdeCuentaCorriente(
             clienteId: $cliente->id,
             montoPago: $monto,
             fecha: $request->fecha_pago ?? now()->format('Y-m-d'),

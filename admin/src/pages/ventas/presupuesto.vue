@@ -95,8 +95,9 @@ const seleccionarCliente = (cliente) => {
 const seleccionarProducto = (producto) => {
   productoSeleccionado.value = producto.id
   busquedaProducto.value = producto.nombre
-  // Usar precio_total (con IVA) en lugar de precio
-  precioProducto.value = producto.precio_total || producto.precio_venta * (1 + (producto.iva || 0) / 100) || 0
+  // IMPORTANTE: Usar precio_total que ya viene calculado desde el backend
+  // precio_total = precio (que ya incluye IVA)
+  precioProducto.value = parseFloat(producto.precio_total || producto.precio || 0)
   mostrarResultadosProducto.value = false
 }
 

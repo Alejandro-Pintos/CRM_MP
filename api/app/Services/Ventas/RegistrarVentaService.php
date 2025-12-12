@@ -44,7 +44,8 @@ class RegistrarVentaService
      *   pagos?: [{metodo_pago_id, monto, fecha_pago?, numero_cheque?, fecha_vencimiento?}],
      *   fecha?: date,
      *   tipo_comprobante?: string,
-     *   numero_comprobante?: string
+     *   numero_comprobante?: string,
+     *   pedido_id?: int
      * }
      * @return Venta
      * @throws ValidationException
@@ -84,7 +85,16 @@ class RegistrarVentaService
                 $this->cuentaCorrienteService->registrarDeudaPorVenta($venta, $saldoPendiente);
             }
             
-            // 10. El estado_pago se calcula automáticamente mediante el Accessor del modelo
+            // 10. Actualizar pedido si viene de uno
+            if (isset($data['pedido_id']) && $data['pedido_id']) {
+                \App\Models\Pedido::where('id', $data['pedido_id'])
+                    ->update([
+                        'venta_id' => $venta->id,
+                        'estado' => 'entregado', // Cambiar estado a entregado
+                    ]);
+            }
+            
+            // 11. El estado_pago se calcula automáticamente mediante el Accessor del modelo
             // No hace falta llamar a determinarEstadoPago() manualmente
             // Solo hacemos un save() para refrescar el modelo
             $venta->touch();
@@ -173,15 +183,48 @@ class RegistrarVentaService
      */
     protected function crearVenta(Cliente $cliente, array $data, float $total): Venta
     {
+        // Generar número de comprobante automáticamente si se especifica tipo
+        $numeroComprobante = $data['numero_comprobante'] ?? null;
+        $tipoComprobante = $data['tipo_comprobante'] ?? null;
+        
+        if ($tipoComprobante && !$numeroComprobante) {
+            $numeroComprobante = $this->generarNumeroComprobante($tipoComprobante);
+        }
+        
         return Venta::create([
             'cliente_id' => $cliente->id,
             'usuario_id' => auth()->id() ?? 1,
             'fecha' => $data['fecha'] ?? now(),
             'total' => $total,
-            'tipo_comprobante' => $data['tipo_comprobante'] ?? null,
-            'numero_comprobante' => $data['numero_comprobante'] ?? null,
+            'tipo_comprobante' => $tipoComprobante,
+            'numero_comprobante' => $numeroComprobante,
             'estado_pago' => 'pendiente', // Se actualiza al final
         ]);
+    }
+    
+    /**
+     * Genera el próximo número de comprobante para el tipo especificado
+     */
+    protected function generarNumeroComprobante(string $tipoComprobante): string
+    {
+        $puntoVenta = '0001'; // Punto de venta por defecto
+        
+        // Buscar o crear numeración para este tipo de comprobante
+        $numeracion = \App\Models\ComprobanteNumeracion::firstOrCreate(
+            [
+                'tipo_comprobante' => $tipoComprobante,
+                'punto_venta' => $puntoVenta,
+            ],
+            [
+                'ultimo_numero' => 0,
+            ]
+        );
+        
+        // Incrementar y guardar
+        $numeracion->increment('ultimo_numero');
+        $numeroConsecutivo = str_pad($numeracion->ultimo_numero, 8, '0', STR_PAD_LEFT);
+        
+        return "{$puntoVenta}-{$numeroConsecutivo}";
     }
 
     /**
@@ -213,18 +256,18 @@ class RegistrarVentaService
         foreach ($pagos as $pagoData) {
             $metodoPago = MetodoPago::find($pagoData['metodo_pago_id']);
             
-            // Ignorar si es Cuenta Corriente (se maneja separado como deuda)
-            if ((int)$pagoData['metodo_pago_id'] === $cuentaCorrienteId) {
-                continue;
-            }
-
-            // Crear pago (incluso para cheques, para tener registro)
+            // Crear pago (incluso para Cuenta Corriente y cheques, para tener registro completo)
             $pago = Pago::create([
                 'venta_id' => $venta->id,
                 'metodo_pago_id' => $pagoData['metodo_pago_id'],
                 'monto' => $pagoData['monto'],
                 'fecha_pago' => $pagoData['fecha_pago'] ?? now(),
             ]);
+            
+            // Si es Cuenta Corriente, solo registrar el pago pero la deuda se maneja separado
+            if ((int)$pagoData['metodo_pago_id'] === $cuentaCorrienteId) {
+                continue;
+            }
 
             // Si es cheque, registrar en tabla cheques (estado=pendiente)
             // El cheque NO reduce deuda hasta que se cobre

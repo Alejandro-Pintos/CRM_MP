@@ -69,10 +69,28 @@ class Venta extends Model
                 
                 $totalPagado += $totalChequesCobrados;
                 
-                // Calcular deuda en Cuenta Corriente
-                $totalCuentaCorriente = $cuentaCorrienteId
-                    ? (float) $this->pagos->where('metodo_pago_id', $cuentaCorrienteId)->sum('monto')
-                    : 0;
+                // Calcular deuda REAL y ORIGINAL en Cuenta Corriente desde movimientos
+                // IMPORTANTE: No solo verificar si hay pagos CC, sino si hay deuda pendiente
+                $deudaCCReal = 0;
+                $deudaCCOriginal = 0;
+                try {
+                    $debe = MovimientoCuentaCorriente::where('venta_id', $this->id)
+                        ->where('tipo', 'venta')
+                        ->sum('debe');
+                    
+                    $haber = MovimientoCuentaCorriente::where('venta_id', $this->id)
+                        ->where('tipo', 'pago')
+                        ->sum('haber');
+                    
+                    $deudaCCOriginal = $debe; // Monto original que fue a CC
+                    $deudaCCReal = max(0, $debe - $haber); // Deuda pendiente actual
+                } catch (\Throwable $e) {
+                    // Fallback: verificar pagos CC
+                    $deudaCCReal = $cuentaCorrienteId
+                        ? (float) $this->pagos->where('metodo_pago_id', $cuentaCorrienteId)->sum('monto')
+                        : 0;
+                    $deudaCCOriginal = $deudaCCReal;
+                }
                 
                 // Calcular cheques pendientes o rechazados
                 $totalChequesPendientes = (float) $this->cheques
@@ -80,12 +98,12 @@ class Venta extends Model
                     ->sum('monto');
 
                 // LÓGICA:
-                // - "pagado": Todo cobrado (sin deuda CC ni cheques pendientes)
-                // - "parcial": Hay deuda CC o cheques pendientes
-                // - "pendiente": No hay pagos reales ni deuda
+                // - "pagado": Todo cobrado (sin deuda CC pendiente ni cheques pendientes)
+                // - "parcial": Hay deuda CC pendiente o pagos parciales
+                // - "pendiente": No hay pagos reales ni cheques cobrados
                 
-                // Si hay deuda en cuenta corriente, es "parcial" (hay deuda)
-                if ($totalCuentaCorriente > 0.01) {
+                // Si hay deuda REAL en cuenta corriente, es "parcial"
+                if ($deudaCCReal > 0.01) {
                     return 'parcial';
                 }
                 
@@ -95,8 +113,9 @@ class Venta extends Model
                     return 'pendiente';
                 }
                 
-                // Verificar pagos reales
-                $saldoSinPagar = round($total - $totalPagado, 2);
+                // Verificar pagos reales + deuda CC original (incluye lo que ya se pagó a CC)
+                $totalCoberturaVenta = $totalPagado + $deudaCCOriginal;
+                $saldoSinPagar = round($total - $totalCoberturaVenta, 2);
                 
                 if ($saldoSinPagar <= 0.01) {
                     return 'pagado';

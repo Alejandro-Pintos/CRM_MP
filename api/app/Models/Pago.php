@@ -31,4 +31,5 @@ class Pago extends Model
     public function venta() { return $this->belongsTo(Venta::class, 'venta_id'); }
     public function metodo() { return $this->belongsTo(MetodoPago::class, 'metodo_pago_id'); }
     public function metodoPago() { return $this->belongsTo(MetodoPago::class, 'metodo_pago_id'); }
+    public function cheque() { return $this->hasOne(Cheque::class, 'pago_id'); }
 }

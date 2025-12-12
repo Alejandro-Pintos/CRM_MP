@@ -25,16 +25,24 @@ class PagoResource extends JsonResource
             'fecha_pago'     => $this->fecha_pago instanceof \Carbon\Carbon 
                 ? $this->fecha_pago->format('Y-m-d') 
                 : $this->fecha_pago,
-            // Campos de cheque
-            'estado_cheque'  => $this->estado_cheque,
-            'numero_cheque'  => $this->numero_cheque,
-            'fecha_cheque'   => $this->fecha_cheque instanceof \Carbon\Carbon 
+            // Campos de cheque - Priorizar datos de la tabla cheques
+            'estado_cheque'  => $this->whenLoaded('cheque', $this->cheque?->estado, $this->estado_cheque),
+            'numero_cheque'  => $this->whenLoaded('cheque', $this->cheque?->numero, $this->numero_cheque),
+            'fecha_cheque'   => $this->whenLoaded('cheque', function() {
+                return $this->cheque?->fecha_emision instanceof \Carbon\Carbon 
+                    ? $this->cheque->fecha_emision->format('Y-m-d') 
+                    : $this->cheque?->fecha_emision;
+            }, $this->fecha_cheque instanceof \Carbon\Carbon 
                 ? $this->fecha_cheque->format('Y-m-d') 
-                : $this->fecha_cheque,
-            'fecha_cobro'    => $this->fecha_cobro instanceof \Carbon\Carbon 
+                : $this->fecha_cheque),
+            'fecha_cobro'    => $this->whenLoaded('cheque', function() {
+                return $this->cheque?->fecha_vencimiento instanceof \Carbon\Carbon 
+                    ? $this->cheque->fecha_vencimiento->format('Y-m-d') 
+                    : $this->cheque?->fecha_vencimiento;
+            }, $this->fecha_cobro instanceof \Carbon\Carbon 
                 ? $this->fecha_cobro->format('Y-m-d') 
-                : $this->fecha_cobro,
-            'observaciones_cheque' => $this->observaciones_cheque,
+                : $this->fecha_cobro),
+            'observaciones_cheque' => $this->whenLoaded('cheque', $this->cheque?->observaciones, $this->observaciones_cheque),
             'created_at'     => $this->created_at instanceof \Carbon\Carbon 
                 ? $this->created_at->format('Y-m-d H:i:s') 
                 : $this->created_at,
