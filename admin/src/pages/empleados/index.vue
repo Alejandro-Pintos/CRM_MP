@@ -136,13 +136,15 @@ const fetchEmpleados = async () => {
 const fetchMetodosPago = async () => {
   try {
     const response = await getMetodosPago()
+    let metodos = []
     if (response.data && Array.isArray(response.data)) {
-      metodosPago.value = response.data
+      metodos = response.data
     } else if (Array.isArray(response)) {
-      metodosPago.value = response
-    } else {
-      metodosPago.value = []
+      metodos = response
     }
+    
+    // Filtrar: Los empleados NO usan Cuenta Corriente (solo clientes)
+    metodosPago.value = metodos.filter(m => m.nombre !== 'Cuenta Corriente')
   } catch (e) {
     console.error('Error al cargar métodos de pago:', e)
   }

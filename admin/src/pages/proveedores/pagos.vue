@@ -62,7 +62,10 @@ const cargarDatos = async () => {
     ])
     
     proveedores.value = Array.isArray(dataProveedores) ? dataProveedores : (dataProveedores.data || [])
-    metodosPago.value = Array.isArray(dataMetodos) ? dataMetodos : (dataMetodos.data || [])
+    
+    // Filtrar: Los proveedores NO usan Cuenta Corriente (solo clientes)
+    const metodos = Array.isArray(dataMetodos) ? dataMetodos : (dataMetodos.data || [])
+    metodosPago.value = metodos.filter(m => m.nombre !== 'Cuenta Corriente')
     
     // Cargar saldos
     await cargarSaldos()
