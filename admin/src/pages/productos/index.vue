@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { getProductos, createProducto, updateProducto, deleteProducto } from '@/services/productos'
 import { getProveedores } from '@/services/proveedores'
 import { toast } from '@/plugins/toast'
@@ -26,6 +26,16 @@ const editedItem = ref({
   estado: 'activo',
   proveedor_id: null,
 })
+
+// Recalcular precio automáticamente cuando cambia precio_venta o iva
+watch([() => editedItem.value.precio_venta, () => editedItem.value.iva], () => {
+  if (dialog.value) {
+    const precioVenta = parseFloat(editedItem.value.precio_venta || 0)
+    const iva = parseFloat(editedItem.value.iva || 0)
+    editedItem.value.precio = parseFloat((precioVenta * (1 + iva / 100)).toFixed(2))
+  }
+})
+
 const defaultItem = {
   id: null,
   codigo: '',
@@ -322,13 +332,15 @@ onMounted(async () => {
               </VCol>
               <VCol cols="12" md="4">
                 <VTextField
-                  :model-value="((editedItem.precio_venta || 0) * (1 + (editedItem.iva || 0) / 100)).toFixed(2)"
+                  v-model.number="editedItem.precio"
                   label="Precio Total (c/IVA)"
-                  type="text"
+                  type="number"
+                  step="0.01"
                   readonly
                   disabled
-                  hint="Se calcula automáticamente: Precio Venta + IVA"
+                  hint="Calculado automáticamente: Precio Venta + IVA"
                   persistent-hint
+                  prefix="$"
                 />
               </VCol>
               <VCol cols="12" md="4">

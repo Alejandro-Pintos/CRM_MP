@@ -151,19 +151,26 @@ const editItem = (item) => {
   editedIndex.value = pedidos.value.indexOf(item)
   editedItem.value = Object.assign({}, item)
   
-  // Cargar items si existen
+  // Cargar items si existen - IMPORTANTE: parseFloat para evitar que queden como strings
   if (item.items && Array.isArray(item.items)) {
-    editedItem.value.items = item.items.map(i => ({
-      producto_id: i.producto_id,
-      cantidad: i.cantidad,
-      precio_compra: i.precio_compra || 0,
-      precio_venta: i.precio_venta || 0,
-      porcentaje_iva: i.porcentaje_iva || 0,
-      porcentaje_extra: i.porcentaje_extra || 0,
-      precio_unitario: i.precio_unitario,
-      observaciones: i.observaciones || '',
-      mostrarResultados: false,
-    }))
+    editedItem.value.items = item.items.map((i, index) => {
+      // Cargar el nombre del producto en el campo de búsqueda
+      busquedaProductos.value[index] = i.producto_codigo 
+        ? `${i.producto_codigo} - ${i.producto_nombre}` 
+        : i.producto_nombre
+      
+      return {
+        producto_id: i.producto_id,
+        cantidad: parseFloat(i.cantidad) || 0,
+        precio_compra: parseFloat(i.precio_compra) || 0,
+        precio_venta: parseFloat(i.precio_venta) || 0,
+        porcentaje_iva: parseFloat(i.porcentaje_iva) || 0,
+        porcentaje_extra: parseFloat(i.porcentaje_extra) || 0,
+        precio_unitario: parseFloat(i.precio_unitario) || 0,
+        observaciones: i.observaciones || '',
+        mostrarResultados: false,
+      }
+    })
   }
   
   // Cargar info de clima si existe
@@ -254,10 +261,12 @@ const seleccionarProducto = (item, producto, index) => {
   // Asignar el producto seleccionado
   item.producto_id = producto.id
   
-  // Asignar precios del producto (NO EDITABLES)
+  // IMPORTANTE: Asignar precios del producto como valores numéricos
   item.precio_compra = parseFloat(producto.precio_compra || 0)
   item.precio_venta = parseFloat(producto.precio_venta || 0)
-  item.porcentaje_iva = parseFloat(producto.porcentaje_iva || 0)
+  
+  // El IVA viene como 'iva' en Producto, no 'porcentaje_iva'
+  item.porcentaje_iva = parseFloat(producto.iva || 0)
   item.porcentaje_extra = 0 // Por defecto sin extra
   
   // Calcular precio unitario automáticamente
@@ -271,6 +280,7 @@ const seleccionarProducto = (item, producto, index) => {
 }
 
 // Calcular precio unitario basado en P.Venta + IVA + % Extra
+// ESTE ES EL PRECIO TOTAL CON IVA que debe coincidir con precio_total del producto
 const calcularPrecioUnitario = (item) => {
   const precioVenta = parseFloat(item.precio_venta || 0)
   const porcentajeIva = parseFloat(item.porcentaje_iva || 0)
@@ -278,7 +288,7 @@ const calcularPrecioUnitario = (item) => {
   
   // Precio unitario = P.Venta * (1 + IVA/100) * (1 + Extra/100)
   const precioConIva = precioVenta * (1 + porcentajeIva / 100)
-  item.precio_unitario = precioConIva * (1 + porcentajeExtra / 100)
+  item.precio_unitario = parseFloat((precioConIva * (1 + porcentajeExtra / 100)).toFixed(2))
 }
 
 const actualizarPrecio = (item) => {

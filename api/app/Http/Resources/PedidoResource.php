@@ -47,7 +47,7 @@ class PedidoResource extends JsonResource
             
             'items' => $this->whenLoaded('items', function() {
                 return $this->items->map(function($item) {
-                    // Obtener datos actuales del producto
+                    // Obtener datos del producto (solo para información adicional)
                     $producto = $item->producto;
                     
                     return [
@@ -55,19 +55,17 @@ class PedidoResource extends JsonResource
                         'producto_id' => $item->producto_id,
                         'producto_nombre' => $producto->nombre ?? null,
                         'producto_codigo' => $producto->codigo ?? null,
-                        'cantidad' => $item->cantidad,
+                        'cantidad' => (float) $item->cantidad,
                         
-                        // Usar datos actuales del producto (no los guardados en el pedido)
-                        'precio_compra' => $producto->precio_compra ?? 0,
-                        'precio_venta' => $producto->precio_venta ?? 0,
-                        'precio_unitario' => $producto->precio ?? 0,
-                        'iva' => $producto->iva ?? 0,
-                        'precio_total' => $producto->precio_total ?? 0,
-                        'extra_porcentaje' => 0,
-                        'margen_minorista' => 0,
+                        // IMPORTANTE: Usar datos PERSISTIDOS del detalle_pedido (no recalcular desde producto)
+                        'precio_compra' => (float) $item->precio_compra,
+                        'precio_venta' => (float) $item->precio_venta,
+                        'porcentaje_iva' => (float) $item->porcentaje_iva,
+                        'porcentaje_extra' => (float) $item->porcentaje_extra,
+                        'precio_unitario' => (float) $item->precio_unitario,
                         
-                        // Subtotal calculado con datos actuales
-                        'subtotal' => ($producto->precio_total ?? 0) * $item->cantidad,
+                        // Subtotal calculado con datos persistidos
+                        'subtotal' => (float) $item->subtotal,
                         'observaciones' => $item->observaciones,
                     ];
                 });
@@ -75,10 +73,8 @@ class PedidoResource extends JsonResource
             
             'total' => $this->whenLoaded('items', function() {
                 return $this->items->sum(function($item) {
-                    // Calcular total con precios actuales del producto
-                    $producto = $item->producto;
-                    $precioTotal = $producto->precio_total ?? 0;
-                    return $precioTotal * $item->cantidad;
+                    // Calcular total con datos persistidos del detalle
+                    return (float) $item->subtotal;
                 });
             }),
             

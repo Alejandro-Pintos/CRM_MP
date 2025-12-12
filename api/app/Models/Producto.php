@@ -46,14 +46,12 @@ class Producto extends Model
     }
 
     /**
-     * Calcula el precio total (precio unitario + IVA)
-     * Este campo NO se guarda en BD, se calcula dinámicamente
+     * Calcula el precio total (precio con IVA incluido)
+     * El campo 'precio' YA incluye el IVA, por lo tanto precio_total = precio
      */
     public function getPrecioTotalAttribute()
     {
-        $precio = (float)$this->precio;
-        $iva = (float)$this->iva;
-        
-        return round($precio * (1 + $iva / 100), 2);
+        // El campo 'precio' ya tiene el IVA aplicado, solo lo retornamos formateado
+        return round((float)$this->precio, 2);
     }
 }
