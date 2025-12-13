@@ -360,19 +360,36 @@ class ReporteController extends Controller
         });
 
         // Calcular totales generales
+        $totalComprasGeneral = $proveedores->sum('total_compras');
+        $totalIngresoVentasGeneral = $proveedores->sum('ingreso_ventas');
+        
+        // Calcular participación de cada proveedor basándose en ingreso_ventas
+        $proveedores = $proveedores->map(function ($proveedor) use ($totalIngresoVentasGeneral) {
+            // Participación = porcentaje de ventas de productos del proveedor sobre el total
+            $participacion = $totalIngresoVentasGeneral > 0 
+                ? round(($proveedor['ingreso_ventas'] / $totalIngresoVentasGeneral) * 100, 2)
+                : 0;
+            
+            $proveedor['participacion'] = (float) $participacion;
+            return $proveedor;
+        });
+
+        // Ordenar por participación descendente (mayor participación primero)
+        $proveedores = $proveedores->sortByDesc('participacion')->values();
+
         $totales = [
             'total_proveedores'  => $proveedores->count(),
-            'total_compras'      => $proveedores->sum('total_compras'),
+            'total_compras'      => $totalComprasGeneral,
             'total_pagos'        => $proveedores->sum('total_pagos'),
             'saldo_total'        => $proveedores->sum('saldo'),
-            'ingreso_ventas_total' => $proveedores->sum('ingreso_ventas'),
+            'ingreso_ventas_total' => $totalIngresoVentasGeneral,
         ];
 
         return response()->json([
             'range'   => ['from' => $from, 'to' => $to],
             'mode'    => 'reporte_completo_proveedores',
             'totales' => $totales,
-            'data'    => $proveedores->values(),
+            'data'    => $proveedores->all(),
         ], Response::HTTP_OK);
     }
 

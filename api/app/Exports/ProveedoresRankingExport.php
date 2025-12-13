@@ -31,7 +31,8 @@ class ProveedoresRankingExport implements FromCollection, WithHeadings, ShouldAu
             'Email', 
             'Estado',
             '# Compras', 
-            'Total Compras', 
+            'Total Compras',
+            'Part. Ventas %',
             '# Pagos', 
             'Total Pagos', 
             'Saldo',
@@ -50,7 +51,8 @@ class ProveedoresRankingExport implements FromCollection, WithHeadings, ShouldAu
             ->orderBy('pr.nombre')
             ->get();
 
-        $rows = $proveedores->map(function ($proveedor) {
+        // Primero calcular datos de todos los proveedores para obtener el total
+        $datosProveedores = $proveedores->map(function ($proveedor) {
             $proveedorId = $proveedor->id;
 
             // Total compras (no anuladas)
@@ -95,23 +97,73 @@ class ProveedoresRankingExport implements FromCollection, WithHeadings, ShouldAu
             $cantidadVendida = (float) ($ventasData->cantidad ?? 0);
 
             return [
-                $proveedor->id,
-                $proveedor->nombre,
-                $proveedor->cuit ?? '-',
-                $proveedor->telefono ?? '-',
-                $proveedor->email ?? '-',
-                $proveedor->estado,
-                $cantidadCompras,
-                $totalCompras,
-                $cantidadPagos,
-                $totalPagos,
-                $saldo,
-                $cantidadProductos,
-                $ingresoVentas,
-                $cantidadVendida,
+                'id' => $proveedor->id,
+                'nombre' => $proveedor->nombre,
+                'cuit' => $proveedor->cuit ?? '-',
+                'telefono' => $proveedor->telefono ?? '-',
+                'email' => $proveedor->email ?? '-',
+                'estado' => $proveedor->estado,
+                'cantidad_compras' => $cantidadCompras,
+                'total_compras' => $totalCompras,
+                'cantidad_pagos' => $cantidadPagos,
+                'total_pagos' => $totalPagos,
+                'saldo' => $saldo,
+                'cantidad_productos' => $cantidadProductos,
+                'ingreso_ventas' => $ingresoVentas,
+                'cantidad_vendida' => $cantidadVendida,
             ];
         });
 
-        return $rows;
+        // Calcular el total general de ingreso por ventas
+        $totalIngresoVentasGeneral = $datosProveedores->sum('ingreso_ventas');
+
+        // Agregar participación a cada proveedor y formatear para Excel
+        $rows = $datosProveedores->map(function ($proveedor) use ($totalIngresoVentasGeneral) {
+            $participacion = $totalIngresoVentasGeneral > 0 
+                ? round(($proveedor['ingreso_ventas'] / $totalIngresoVentasGeneral) * 100, 2)
+                : 0;
+
+            return [
+                'id' => $proveedor['id'],
+                'nombre' => $proveedor['nombre'],
+                'cuit' => $proveedor['cuit'],
+                'telefono' => $proveedor['telefono'],
+                'email' => $proveedor['email'],
+                'estado' => $proveedor['estado'],
+                'cantidad_compras' => $proveedor['cantidad_compras'],
+                'total_compras' => $proveedor['total_compras'],
+                'participacion' => $participacion,
+                'cantidad_pagos' => $proveedor['cantidad_pagos'],
+                'total_pagos' => $proveedor['total_pagos'],
+                'saldo' => $proveedor['saldo'],
+                'cantidad_productos' => $proveedor['cantidad_productos'],
+                'ingreso_ventas' => $proveedor['ingreso_ventas'],
+                'cantidad_vendida' => $proveedor['cantidad_vendida'],
+            ];
+        });
+
+        // Ordenar por participación descendente
+        $rows = $rows->sortByDesc('participacion')->values();
+
+        // Convertir a array para Excel
+        return $rows->map(function ($row) {
+            return [
+                $row['id'],
+                $row['nombre'],
+                $row['cuit'],
+                $row['telefono'],
+                $row['email'],
+                $row['estado'],
+                $row['cantidad_compras'],
+                $row['total_compras'],
+                $row['participacion'],
+                $row['cantidad_pagos'],
+                $row['total_pagos'],
+                $row['saldo'],
+                $row['cantidad_productos'],
+                $row['ingreso_ventas'],
+                $row['cantidad_vendida'],
+            ];
+        });
     }
 }
