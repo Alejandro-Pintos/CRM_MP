@@ -42,4 +42,34 @@ class PagoEmpleado extends Model
     {
         return $this->belongsTo(MetodoPago::class, 'metodo_pago_id');
     }
+
+    /**
+     * Relación con cheque emitido
+     */
+    public function cheque()
+    {
+        return $this->hasOne(Cheque::class, 'pago_empleado_id');
+    }
+
+    /**
+     * Crear cheque emitido asociado a este pago
+     * 
+     * @param array $datosRequest
+     * @return Cheque
+     */
+    public function crearChequeEmitido(array $datosRequest)
+    {
+        return Cheque::create([
+            'tipo' => Cheque::TIPO_EMITIDO,
+            'pago_empleado_id' => $this->id,
+            'empleado_id' => $this->empleado_id,
+            'banco' => $datosRequest['banco_cheque'],
+            'numero' => $datosRequest['numero_cheque'],
+            'monto' => $this->monto,
+            'fecha_emision' => $datosRequest['fecha_emision_cheque'],
+            'fecha_vencimiento' => $datosRequest['fecha_vencimiento_cheque'] ?? null,
+            'estado' => Cheque::ESTADO_PENDIENTE,
+            'observaciones' => $datosRequest['observaciones_cheque'] ?? null,
+        ]);
+    }
 }

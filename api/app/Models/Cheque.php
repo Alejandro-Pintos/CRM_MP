@@ -37,6 +37,9 @@ class Cheque extends Model
         // Cheques emitidos (a proveedores)
         'proveedor_id',
         'pago_proveedor_id',
+        // Cheques emitidos (a empleados)
+        'empleado_id',
+        'pago_empleado_id',
         // Datos comunes
         'banco',
         'numero',
@@ -83,6 +86,17 @@ class Cheque extends Model
     public function pagoProveedor()
     {
         return $this->belongsTo(PagoProveedor::class, 'pago_proveedor_id');
+    }
+
+    // Relaciones para cheques EMITIDOS (a empleados)
+    public function empleado()
+    {
+        return $this->belongsTo(Empleado::class);
+    }
+
+    public function pagoEmpleado()
+    {
+        return $this->belongsTo(PagoEmpleado::class, 'pago_empleado_id');
     }
 
     // Scopes útiles

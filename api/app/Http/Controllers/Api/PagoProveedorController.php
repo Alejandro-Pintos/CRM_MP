@@ -73,7 +73,13 @@ class PagoProveedorController extends Controller
         }
 
         $pago = PagoProveedor::create($data);
-        $pago->load('metodoPago');
+        
+        // Si el método de pago es Cheque (id 4), crear el cheque emitido
+        if (isset($data['metodo_pago_id']) && $data['metodo_pago_id'] == 4) {
+            $pago->crearChequeEmitido($data);
+        }
+        
+        $pago->load(['metodoPago', 'cheque']);
 
         return (new PagoProveedorResource($pago))
             ->additional(['message' => 'Pago registrado correctamente'])

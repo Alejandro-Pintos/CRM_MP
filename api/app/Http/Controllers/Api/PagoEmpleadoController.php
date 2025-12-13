@@ -68,7 +68,13 @@ class PagoEmpleadoController extends Controller
         $data['empleado_id'] = $empleado->id;
 
         $pago = PagoEmpleado::create($data);
-        $pago->load('metodoPago');
+        
+        // Si el método de pago es Cheque (id 4), crear el cheque emitido
+        if (isset($data['metodo_pago_id']) && $data['metodo_pago_id'] == 4) {
+            $pago->crearChequeEmitido($data);
+        }
+        
+        $pago->load(['metodoPago', 'cheque']);
 
         return (new PagoEmpleadoResource($pago))
             ->additional(['message' => 'Pago registrado correctamente'])

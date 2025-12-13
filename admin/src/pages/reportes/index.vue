@@ -35,31 +35,57 @@ const reporteProveedores = ref([])
 const reporteVentas = ref([])
 
 const headersClientes = [
-  { title: 'ID Cliente', key: 'cliente_id' },
-  { title: 'Nombre', key: 'nombre' },
-  { title: 'Total Compras', key: 'compras' },
-  { title: 'Ingreso Total', key: 'ingreso_total' },
+  { title: 'ID', key: 'cliente_id', width: 70 },
+  { title: 'Nombre', key: 'nombre', width: 120 },
+  { title: 'Apellido', key: 'apellido', width: 120 },
+  { title: 'Email', key: 'email', width: 180 },
+  { title: 'Teléfono', key: 'telefono', width: 120 },
+  { title: 'CUIT/CUIL', key: 'cuit_cuil', width: 110 },
+  { title: 'Estado', key: 'estado', width: 90 },
+  { title: '# Compras', key: 'compras', width: 100 },
+  { title: 'Total Compras', key: 'ingreso_total', width: 130 },
+  { title: 'Saldo CC', key: 'saldo_actual', width: 120 },
+  { title: 'Límite Crédito', key: 'limite_credito', width: 130 },
 ]
 
 const headersProductos = [
-  { title: 'ID Producto', key: 'producto_id' },
-  { title: 'Nombre', key: 'nombre' },
-  { title: 'Cantidad Vendida', key: 'cantidad_total' },
-  { title: 'Ingreso Total', key: 'ingreso_total' },
+  { title: 'ID', key: 'producto_id', width: 70 },
+  { title: 'Código', key: 'codigo', width: 100 },
+  { title: 'Nombre', key: 'nombre', width: 180 },
+  { title: 'Proveedor', key: 'proveedor_nombre', width: 150 },
+  { title: 'Precio Venta', key: 'precio_venta', width: 120 },
+  { title: 'Precio Compra', key: 'precio_compra', width: 120 },
+  { title: 'Estado', key: 'estado', width: 90 },
+  { title: 'Cant. Vendida', key: 'cantidad_total', width: 110 },
+  { title: 'Ingreso Total', key: 'ingreso_total', width: 130 },
 ]
 
 const headersProveedores = [
-  { title: 'ID Proveedor', key: 'proveedor_id' },
-  { title: 'Nombre', key: 'nombre' },
-  { title: 'Cantidad Total', key: 'cantidad_total' },
-  { title: 'Ingreso Total', key: 'ingreso_total' },
-  { title: 'Participación %', key: 'participacion' },
+  { title: 'ID', key: 'proveedor_id', width: 80 },
+  { title: 'Nombre', key: 'nombre', width: 200 },
+  { title: 'CUIT', key: 'cuit', width: 120 },
+  { title: 'Teléfono', key: 'telefono', width: 120 },
+  { title: 'Email', key: 'email', width: 180 },
+  { title: 'Estado', key: 'estado', width: 100 },
+  { title: '# Compras', key: 'cantidad_compras', width: 110 },
+  { title: 'Total Compras', key: 'total_compras', width: 140 },
+  { title: '# Pagos', key: 'cantidad_pagos', width: 100 },
+  { title: 'Total Pagos', key: 'total_pagos', width: 140 },
+  { title: 'Saldo', key: 'saldo', width: 130 },
+  { title: '# Productos', key: 'cantidad_productos', width: 120 },
+  { title: 'Ingreso Ventas', key: 'ingreso_ventas', width: 150 },
 ]
 
 const headersVentas = [
-  { title: 'Período', key: 'period' },
-  { title: 'Total Ventas', key: 'ventas_count' },
-  { title: 'Total Neto', key: 'total_neto' },
+  { title: 'Período', key: 'period', width: 120 },
+  { title: '# Ventas', key: 'ventas_count', width: 100 },
+  { title: 'Total Neto', key: 'total_neto', width: 130 },
+  { title: 'Ticket Prom.', key: 'ticket_promedio', width: 120 },
+  { title: 'Clientes', key: 'clientes_unicos', width: 100 },
+  { title: 'Productos', key: 'productos_vendidos', width: 100 },
+  { title: 'Pagado', key: 'pagado', width: 90 },
+  { title: 'Pendiente', key: 'pendiente', width: 90 },
+  { title: 'Parcial', key: 'parcial', width: 90 },
 ]
 
 const fetchReportes = async () => {
@@ -216,8 +242,24 @@ onMounted(fetchReportes)
               class="elevation-1"
               density="comfortable"
             >
+              <template #item.estado="{ item }">
+                <VChip :color="item.estado === 'activo' ? 'success' : 'error'" size="small">
+                  {{ item.estado }}
+                </VChip>
+              </template>
               <template #item.ingreso_total="{ item }">
                 {{ formatPrice(item.ingreso_total) }}
+              </template>
+              <template #item.saldo_actual="{ item }">
+                <VChip 
+                  :color="item.saldo_actual > 0 ? 'error' : item.saldo_actual < 0 ? 'success' : 'default'" 
+                  size="small"
+                >
+                  {{ formatPrice(item.saldo_actual) }}
+                </VChip>
+              </template>
+              <template #item.limite_credito="{ item }">
+                {{ formatPrice(item.limite_credito) }}
               </template>
             </VDataTable>
           </VWindowItem>
@@ -244,6 +286,20 @@ onMounted(fetchReportes)
               class="elevation-1"
               density="comfortable"
             >
+              <template #item.proveedor_nombre="{ item }">
+                {{ item.proveedor_nombre || 'Sin proveedor' }}
+              </template>
+              <template #item.precio_venta="{ item }">
+                {{ formatPrice(item.precio_venta) }}
+              </template>
+              <template #item.precio_compra="{ item }">
+                {{ formatPrice(item.precio_compra) }}
+              </template>
+              <template #item.estado="{ item }">
+                <VChip :color="item.estado === 'activo' ? 'success' : 'error'" size="small">
+                  {{ item.estado }}
+                </VChip>
+              </template>
               <template #item.ingreso_total="{ item }">
                 {{ formatPrice(item.ingreso_total) }}
               </template>
@@ -272,13 +328,27 @@ onMounted(fetchReportes)
               class="elevation-1"
               density="comfortable"
             >
-              <template #item.ingreso_total="{ item }">
-                {{ formatPrice(item.ingreso_total) }}
-              </template>
-              <template #item.participacion="{ item }">
-                <VChip color="primary" size="small">
-                  {{ item.participacion }}%
+              <template #item.estado="{ item }">
+                <VChip :color="item.estado === 'activo' ? 'success' : 'error'" size="small">
+                  {{ item.estado }}
                 </VChip>
+              </template>
+              <template #item.total_compras="{ item }">
+                {{ formatPrice(item.total_compras) }}
+              </template>
+              <template #item.total_pagos="{ item }">
+                {{ formatPrice(item.total_pagos) }}
+              </template>
+              <template #item.saldo="{ item }">
+                <VChip 
+                  :color="item.saldo > 0 ? 'error' : item.saldo < 0 ? 'success' : 'default'" 
+                  size="small"
+                >
+                  {{ formatPrice(item.saldo) }}
+                </VChip>
+              </template>
+              <template #item.ingreso_ventas="{ item }">
+                {{ formatPrice(item.ingreso_ventas) }}
               </template>
             </VDataTable>
           </VWindowItem>
@@ -307,6 +377,27 @@ onMounted(fetchReportes)
             >
               <template #item.total_neto="{ item }">
                 {{ formatPrice(item.total_neto) }}
+              </template>
+              <template #item.ticket_promedio="{ item }">
+                {{ formatPrice(item.ticket_promedio) }}
+              </template>
+              <template #item.pagado="{ item }">
+                <VChip color="success" size="small" v-if="item.pagado > 0">
+                  {{ item.pagado }}
+                </VChip>
+                <span v-else class="text-grey">0</span>
+              </template>
+              <template #item.pendiente="{ item }">
+                <VChip color="error" size="small" v-if="item.pendiente > 0">
+                  {{ item.pendiente }}
+                </VChip>
+                <span v-else class="text-grey">0</span>
+              </template>
+              <template #item.parcial="{ item }">
+                <VChip color="warning" size="small" v-if="item.parcial > 0">
+                  {{ item.parcial }}
+                </VChip>
+                <span v-else class="text-grey">0</span>
               </template>
             </VDataTable>
           </VWindowItem>

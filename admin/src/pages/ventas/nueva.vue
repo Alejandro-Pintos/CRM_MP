@@ -931,7 +931,7 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
                       density="compact"
                       variant="outlined"
                       readonly
-                      hint="Precio del producto desde la base de datos"
+                      hint="Precio del producto con IVA incluido"
                       persistent-hint
                       :disabled="!productoSeleccionado"
                     />

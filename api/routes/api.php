@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\PedidoController;
 use App\Http\Controllers\PresupuestoController;
 use App\Http\Controllers\ChequeController;
 use App\Http\Controllers\Api\PagoProveedorController;
+use App\Http\Controllers\Api\CompraProveedorController;
 use App\Http\Controllers\Api\ProveedorEstadoCuentaController;
 use App\Http\Controllers\Api\ChequeEmitidoController;
 use App\Http\Controllers\Api\NotificationController;
@@ -47,6 +48,16 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
 
     Route::apiResource('proveedores', ProveedorController::class)
         ->parameters(['proveedores' => 'proveedor']);   // <-- explícito
+    
+    // Compras a Proveedores
+    Route::get('proveedores/{proveedor}/compras', [CompraProveedorController::class, 'index'])
+        ->name('proveedores.compras.index');
+    Route::post('proveedores/{proveedor}/compras', [CompraProveedorController::class, 'store'])
+        ->name('proveedores.compras.store');
+    Route::get('compras/{compra}', [CompraProveedorController::class, 'show'])
+        ->name('compras.show');
+    Route::delete('compras/{compra}', [CompraProveedorController::class, 'destroy'])
+        ->name('compras.destroy');
     
     // Pagos a Proveedores
     Route::get('proveedores/{proveedor}/pagos', [PagoProveedorController::class, 'index'])

@@ -56,6 +56,12 @@ const nuevoPago = ref({
   metodo_pago_id: null,
   concepto: '',
   observaciones: '',
+  // Campos de cheque
+  banco_cheque: '',
+  numero_cheque: '',
+  fecha_emision_cheque: new Date().toISOString().split('T')[0],
+  fecha_vencimiento_cheque: null,
+  observaciones_cheque: '',
 })
 
 const defaultPago = {
@@ -64,6 +70,12 @@ const defaultPago = {
   metodo_pago_id: null,
   concepto: '',
   observaciones: '',
+  // Campos de cheque
+  banco_cheque: '',
+  numero_cheque: '',
+  fecha_emision_cheque: new Date().toISOString().split('T')[0],
+  fecha_vencimiento_cheque: null,
+  observaciones_cheque: '',
 }
 
 // Filtrar empleados por búsqueda
@@ -207,8 +219,20 @@ const abrirDialogNuevoPago = () => {
 const guardarPago = async () => {
   try {
     const dataToSend = {
-      ...nuevoPago.value,
+      fecha_pago: nuevoPago.value.fecha_pago,
       monto: parseFloat(nuevoPago.value.monto) || 0,
+      metodo_pago_id: nuevoPago.value.metodo_pago_id,
+      concepto: nuevoPago.value.concepto,
+      observaciones: nuevoPago.value.observaciones,
+    }
+    
+    // Si es método cheque (id 4), agregar datos del cheque
+    if (nuevoPago.value.metodo_pago_id == 4) {
+      dataToSend.banco_cheque = nuevoPago.value.banco_cheque
+      dataToSend.numero_cheque = nuevoPago.value.numero_cheque
+      dataToSend.fecha_emision_cheque = nuevoPago.value.fecha_emision_cheque
+      dataToSend.fecha_vencimiento_cheque = nuevoPago.value.fecha_vencimiento_cheque || null
+      dataToSend.observaciones_cheque = nuevoPago.value.observaciones_cheque || null
     }
     
     await createPagoEmpleado(selectedEmpleado.value.id, dataToSend)
@@ -621,6 +645,51 @@ onMounted(() => {
                   clearable
                 />
               </VCol>
+              
+              <!-- Campos de cheque (mostrar solo si método es Cheque - id 4) -->
+              <template v-if="nuevoPago.metodo_pago_id == 4">
+                <VCol cols="12">
+                  <VDivider />
+                  <p class="text-subtitle-2 mt-2 mb-2 text-primary">Datos del Cheque</p>
+                </VCol>
+                <VCol cols="12" md="6">
+                  <VTextField
+                    v-model="nuevoPago.banco_cheque"
+                    label="Banco*"
+                    required
+                  />
+                </VCol>
+                <VCol cols="12" md="6">
+                  <VTextField
+                    v-model="nuevoPago.numero_cheque"
+                    label="Número de Cheque*"
+                    required
+                  />
+                </VCol>
+                <VCol cols="12" md="6">
+                  <VTextField
+                    v-model="nuevoPago.fecha_emision_cheque"
+                    label="Fecha de Emisión*"
+                    type="date"
+                    required
+                  />
+                </VCol>
+                <VCol cols="12" md="6">
+                  <VTextField
+                    v-model="nuevoPago.fecha_vencimiento_cheque"
+                    label="Fecha de Vencimiento"
+                    type="date"
+                  />
+                </VCol>
+                <VCol cols="12">
+                  <VTextarea
+                    v-model="nuevoPago.observaciones_cheque"
+                    label="Observaciones del Cheque"
+                    rows="2"
+                  />
+                </VCol>
+              </template>
+              
               <VCol cols="12">
                 <VTextarea
                   v-model="nuevoPago.observaciones"

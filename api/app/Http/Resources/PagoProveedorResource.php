@@ -41,6 +41,19 @@ class PagoProveedorResource extends JsonResource
                 ];
             }),
             
+            'cheque' => $this->whenLoaded('cheque', function() {
+                if (!$this->cheque) return null;
+                return [
+                    'id' => $this->cheque->id,
+                    'banco' => $this->cheque->banco,
+                    'numero' => $this->cheque->numero,
+                    'fecha_emision' => $this->cheque->fecha_emision?->format('Y-m-d'),
+                    'fecha_vencimiento' => $this->cheque->fecha_vencimiento?->format('Y-m-d'),
+                    'estado' => $this->cheque->estado,
+                    'observaciones' => $this->cheque->observaciones,
+                ];
+            }),
+            
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

@@ -71,30 +71,75 @@ class ReporteController extends Controller
         $cnt   = (int)   ($kpis->cnt   ?? 0);
         $ticketProm = $cnt > 0 ? round($total / $cnt, 2) : 0.0;
 
-        // Series
+        // Series con información enriquecida
         if ($groupBy === 'month') {
-            $series = (clone $q)
+            $seriesBase = (clone $q)
                 ->selectRaw("DATE_FORMAT(fecha, '%Y-%m-01') as period, COALESCE(SUM($TOTAL_COL),0) as total, COUNT(*) as cnt")
                 ->groupBy('period')
                 ->orderBy('period')
-                ->get()
-                ->map(fn($r) => [
-                    'period'        => $r->period,
-                    'total_neto'    => (float) $r->total,
-                    'ventas_count'  => (int)   $r->cnt,
-                ])->all();
+                ->get();
         } else {
-            $series = (clone $q)
+            $seriesBase = (clone $q)
                 ->selectRaw("DATE(fecha) as period, COALESCE(SUM($TOTAL_COL),0) as total, COUNT(*) as cnt")
                 ->groupBy('period')
                 ->orderBy('period')
-                ->get()
-                ->map(fn($r) => [
-                    'period'        => $r->period,
-                    'total_neto'    => (float) $r->total,
-                    'ventas_count'  => (int)   $r->cnt,
-                ])->all();
+                ->get();
         }
+
+        $series = $seriesBase->map(function($r) use ($from, $to, $groupBy) {
+            $period = $r->period;
+            $total = (float) $r->total;
+            $cnt = (int) $r->cnt;
+            $ticketProm = $cnt > 0 ? round($total / $cnt, 2) : 0;
+
+            // Filtrar ventas del período
+            $ventasQuery = DB::table('ventas as v')
+                ->whereNull('v.deleted_at');
+            
+            if ($groupBy === 'month') {
+                $ventasQuery->whereRaw("DATE_FORMAT(v.fecha, '%Y-%m-01') = ?", [$period]);
+            } else {
+                $ventasQuery->whereDate('v.fecha', $period);
+            }
+
+            // Clientes únicos
+            $clientesUnicos = (clone $ventasQuery)->distinct('cliente_id')->count('cliente_id');
+
+            // Total productos vendidos
+            $productosVendidos = DB::table('ventas as v')
+                ->join('detalle_venta as d', 'd.venta_id', '=', 'v.id')
+                ->whereNull('v.deleted_at')
+                ->when($groupBy === 'month', 
+                    fn($q) => $q->whereRaw("DATE_FORMAT(v.fecha, '%Y-%m-01') = ?", [$period]),
+                    fn($q) => $q->whereDate('v.fecha', $period)
+                )
+                ->sum('d.cantidad');
+
+            // Estados de pago
+            $estadoPagos = DB::table('ventas as v')
+                ->whereNull('v.deleted_at')
+                ->when($groupBy === 'month', 
+                    fn($q) => $q->whereRaw("DATE_FORMAT(v.fecha, '%Y-%m-01') = ?", [$period]),
+                    fn($q) => $q->whereDate('v.fecha', $period)
+                )
+                ->selectRaw('estado_pago, COUNT(*) as cantidad')
+                ->groupBy('estado_pago')
+                ->get()
+                ->pluck('cantidad', 'estado_pago')
+                ->toArray();
+
+            return [
+                'period'            => $period,
+                'total_neto'        => $total,
+                'ventas_count'      => $cnt,
+                'ticket_promedio'   => $ticketProm,
+                'clientes_unicos'   => (int) $clientesUnicos,
+                'productos_vendidos' => (float) ($productosVendidos ?? 0),
+                'pagado'            => (int) ($estadoPagos['pagado'] ?? 0),
+                'pendiente'         => (int) ($estadoPagos['pendiente'] ?? 0),
+                'parcial'           => (int) ($estadoPagos['parcial'] ?? 0),
+            ];
+        })->all();
 
         return response()->json([
             'range' => ['from'=>$from, 'to'=>$to, 'tz'=>$tz],
@@ -105,9 +150,14 @@ class ReporteController extends Controller
                 'group_by'    => $groupBy,
             ],
             'kpis' => [
-                'total_neto'      => $total,
-                'ventas_count'    => $cnt,
-                'ticket_promedio' => $ticketProm,
+                'total_neto'         => $total,
+                'ventas_count'       => $cnt,
+                'ticket_promedio'    => $ticketProm,
+                'clientes_unicos'    => (clone $q)->distinct('cliente_id')->count('cliente_id'),
+                'productos_vendidos' => DB::table('ventas as v')
+                    ->join('detalle_venta as d', 'd.venta_id', '=', 'v.id')
+                    ->whereIn('v.id', (clone $q)->pluck('id'))
+                    ->sum('d.cantidad'),
             ],
             'series' => $series,
         ], Response::HTTP_OK);
@@ -130,11 +180,23 @@ class ReporteController extends Controller
 
         $rows = DB::table('ventas as v')
             ->join('clientes as c', 'c.id', '=', 'v.cliente_id')
-            ->whereNull('v.deleted_at') // Excluir ventas eliminadas (soft delete)
+            ->whereNull('v.deleted_at')
             ->when($from, fn($q) => $q->whereDate('v.fecha','>=',$from))
             ->when($to,   fn($q) => $q->whereDate('v.fecha','<=',$to))
-            ->selectRaw('v.cliente_id, c.nombre, COUNT(*) as compras, SUM(v.total) as ingreso_total')
-            ->groupBy('v.cliente_id','c.nombre')
+            ->selectRaw('
+                v.cliente_id,
+                c.nombre,
+                c.apellido,
+                c.email,
+                c.telefono,
+                c.cuit_cuil,
+                c.estado,
+                c.saldo_actual,
+                c.limite_credito,
+                COUNT(*) as compras,
+                SUM(v.total) as ingreso_total
+            ')
+            ->groupBy('v.cliente_id','c.nombre','c.apellido','c.email','c.telefono','c.cuit_cuil','c.estado','c.saldo_actual','c.limite_credito')
             ->orderByDesc('ingreso_total')
             ->limit($limit)
             ->get();
@@ -164,16 +226,22 @@ class ReporteController extends Controller
         $rows = DB::table('ventas as v')
             ->join('detalle_venta as d', 'd.venta_id', '=', 'v.id')
             ->join('productos as p', 'p.id', '=', 'd.producto_id')
-            ->whereNull('v.deleted_at') // Excluir ventas eliminadas (soft delete)
+            ->leftJoin('proveedores as pr', 'pr.id', '=', 'p.proveedor_id')
+            ->whereNull('v.deleted_at')
             ->when($from, fn($q) => $q->whereDate('v.fecha','>=',$from))
             ->when($to,   fn($q) => $q->whereDate('v.fecha','<=',$to))
             ->selectRaw('
                 d.producto_id,
+                p.codigo,
                 p.nombre,
-                SUM(d.cantidad)                      as cantidad_total,
-                SUM(d.cantidad * d.precio_unitario)  as ingreso_total
+                p.precio_venta,
+                p.precio_compra,
+                p.estado,
+                pr.nombre as proveedor_nombre,
+                SUM(d.cantidad) as cantidad_total,
+                SUM(d.cantidad * d.precio_unitario) as ingreso_total
             ')
-            ->groupBy('d.producto_id','p.nombre')
+            ->groupBy('d.producto_id','p.codigo','p.nombre','p.precio_venta','p.precio_compra','p.estado','pr.nombre')
             ->orderByDesc('ingreso_total')
             ->limit($limit)
             ->get();
@@ -186,86 +254,125 @@ class ReporteController extends Controller
     }
 
     /**
-     * Proveedores (JSON): ranking por ventas si existe productos.proveedor_id,
-     * si no, devuelve resumen básico.
-     * Soporta include_unassigned para agrupar como "Sin proveedor".
+     * Proveedores (JSON): Lista completa con información de compras, pagos y saldo.
+     * Muestra todos los proveedores con datos enriquecidos.
      */
     public function proveedores(Request $request)
     {
         $request->validate([
-            'from'               => ['nullable','date'],
-            'to'                 => ['nullable','date','after_or_equal:from'],
-            'limit'              => ['nullable','integer','min:1','max:100'],
-            'include_unassigned' => ['nullable','boolean'],
+            'from'   => ['nullable','date'],
+            'to'     => ['nullable','date','after_or_equal:from'],
+            'limit'  => ['nullable','integer','min:1','max:500'],
+            'estado' => ['nullable','in:activo,inactivo'],
         ]);
 
-        $from  = $request->input('from');
-        $to    = $request->input('to');
-        $limit = (int) $request->input('limit', 10);
-        $includeUnassigned = $request->boolean('include_unassigned', true);
+        $from   = $request->input('from');
+        $to     = $request->input('to');
+        $limit  = (int) $request->input('limit', 100);
+        $estado = $request->input('estado');
 
-        if (Schema::hasColumn('productos', 'proveedor_id')) {
-            $base = DB::table('ventas as v')
-                ->join('detalle_venta as d', 'd.venta_id', '=', 'v.id')
-                ->join('productos as p', 'p.id', '=', 'd.producto_id')
-                ->leftJoin('proveedores as pr', 'pr.id', '=', 'p.proveedor_id')
-                ->whereNull('v.deleted_at') // Excluir ventas eliminadas (soft delete)
-                ->when($from, fn($q) => $q->whereDate('v.fecha','>=',$from))
-                ->when($to,   fn($q) => $q->whereDate('v.fecha','<=',$to))
-                ->when(!$includeUnassigned, fn($q) => $q->whereNotNull('p.proveedor_id'));
+        // Obtener todos los proveedores con información completa
+        $proveedoresQuery = DB::table('proveedores as pr')
+            ->select(
+                'pr.id',
+                'pr.nombre',
+                'pr.cuit',
+                'pr.telefono',
+                'pr.email',
+                'pr.estado',
+                'pr.created_at'
+            )
+            ->whereNull('pr.deleted_at')
+            ->when($estado, fn($q) => $q->where('pr.estado', $estado))
+            ->orderBy('pr.nombre')
+            ->limit($limit)
+            ->get();
 
-            $rows = $base
-                ->selectRaw("
-                    COALESCE(pr.id, 0)                   as proveedor_id,
-                    COALESCE(pr.nombre, 'Sin proveedor') as nombre,
-                    SUM(d.cantidad)                      as cantidad_total,
-                    SUM(d.cantidad * d.precio_unitario)  as ingreso_total
-                ")
-                ->groupBy('pr.id', 'pr.nombre')
-                ->orderByRaw("CASE WHEN COALESCE(pr.id, 0) = 0 THEN 1 ELSE 0 END, ingreso_total DESC")
-                ->limit($limit)
-                ->get();
+        $proveedores = $proveedoresQuery->map(function ($proveedor) use ($from, $to) {
+            $proveedorId = $proveedor->id;
 
-            $totalIngresos = $rows->sum(fn($r) => (float) $r->ingreso_total);
+            // Total compras en el período (solo no anuladas)
+            $comprasQuery = DB::table('compras')
+                ->where('proveedor_id', $proveedorId)
+                ->where('estado', '!=', 'anulado')
+                ->when($from, fn($q) => $q->whereDate('fecha_compra', '>=', $from))
+                ->when($to, fn($q) => $q->whereDate('fecha_compra', '<=', $to));
+            
+            $totalCompras = $comprasQuery->sum('monto_total') ?? 0;
+            $cantidadCompras = $comprasQuery->count();
 
-            $rows = $rows->map(function ($r) use ($totalIngresos) {
-                $ingreso = (float) $r->ingreso_total;
-                return [
-                    'proveedor_id'   => (int) $r->proveedor_id,  // 0 = Sin proveedor
-                    'nombre'         => (string) $r->nombre,
-                    'cantidad_total' => (float) $r->cantidad_total,
-                    'ingreso_total'  => $ingreso,
-                    'participacion'  => $totalIngresos > 0 ? round($ingreso * 100 / $totalIngresos, 2) : 0.0,
-                ];
-            });
+            // Total pagos en el período
+            $pagosQuery = DB::table('pagos_proveedores')
+                ->where('proveedor_id', $proveedorId)
+                ->when($from, fn($q) => $q->whereDate('fecha_pago', '>=', $from))
+                ->when($to, fn($q) => $q->whereDate('fecha_pago', '<=', $to));
+            
+            $totalPagos = $pagosQuery->sum('monto') ?? 0;
+            $cantidadPagos = $pagosQuery->count();
 
-            return response()->json([
-                'range'          => ['from'=>$from, 'to'=>$to],
-                'limit'          => $limit,
-                'mode'           => $includeUnassigned
-                                    ? 'ranking_por_ventas_incluye_sin_proveedor'
-                                    : 'ranking_por_ventas_solo_asignados',
-                'total_ingresos' => $totalIngresos,
-                'data'           => $rows,
-            ], Response::HTTP_OK);
-        }
+            // Saldo = Total compras - Total pagos
+            $saldo = $totalCompras - $totalPagos;
 
-        // Fallback: resumen simple
-        $totalProveedores = DB::table('proveedores')->count();
-        $porEstado = [];
-        if (Schema::hasColumn('proveedores', 'estado')) {
-            $porEstado = DB::table('proveedores')
-                ->selectRaw('estado, COUNT(*) as cantidad')
-                ->groupBy('estado')
-                ->get();
-        }
+            // Productos asociados al proveedor (si existe la columna)
+            $cantidadProductos = 0;
+            if (Schema::hasColumn('productos', 'proveedor_id')) {
+                $cantidadProductos = DB::table('productos')
+                    ->where('proveedor_id', $proveedorId)
+                    ->whereNull('deleted_at')
+                    ->count();
+            }
+
+            // Ventas de productos del proveedor en el período
+            $ingresoVentas = 0;
+            $cantidadVendida = 0;
+            if (Schema::hasColumn('productos', 'proveedor_id')) {
+                $ventasData = DB::table('ventas as v')
+                    ->join('detalle_venta as d', 'd.venta_id', '=', 'v.id')
+                    ->join('productos as p', 'p.id', '=', 'd.producto_id')
+                    ->where('p.proveedor_id', $proveedorId)
+                    ->whereNull('v.deleted_at')
+                    ->when($from, fn($q) => $q->whereDate('v.fecha', '>=', $from))
+                    ->when($to, fn($q) => $q->whereDate('v.fecha', '<=', $to))
+                    ->selectRaw('SUM(d.cantidad * d.precio_unitario) as ingreso, SUM(d.cantidad) as cantidad')
+                    ->first();
+                
+                $ingresoVentas = (float) ($ventasData->ingreso ?? 0);
+                $cantidadVendida = (float) ($ventasData->cantidad ?? 0);
+            }
+
+            return [
+                'proveedor_id'      => (int) $proveedor->id,
+                'nombre'            => $proveedor->nombre,
+                'cuit'              => $proveedor->cuit ?? '-',
+                'telefono'          => $proveedor->telefono ?? '-',
+                'email'             => $proveedor->email ?? '-',
+                'estado'            => $proveedor->estado,
+                'cantidad_compras'  => (int) $cantidadCompras,
+                'total_compras'     => (float) $totalCompras,
+                'cantidad_pagos'    => (int) $cantidadPagos,
+                'total_pagos'       => (float) $totalPagos,
+                'saldo'             => (float) $saldo,
+                'cantidad_productos'=> (int) $cantidadProductos,
+                'ingreso_ventas'    => (float) $ingresoVentas,
+                'cantidad_vendida'  => (float) $cantidadVendida,
+                'fecha_registro'    => $proveedor->created_at,
+            ];
+        });
+
+        // Calcular totales generales
+        $totales = [
+            'total_proveedores'  => $proveedores->count(),
+            'total_compras'      => $proveedores->sum('total_compras'),
+            'total_pagos'        => $proveedores->sum('total_pagos'),
+            'saldo_total'        => $proveedores->sum('saldo'),
+            'ingreso_ventas_total' => $proveedores->sum('ingreso_ventas'),
+        ];
 
         return response()->json([
-            'range'      => ['from'=>$from, 'to'=>$to],
-            'mode'       => 'resumen_proveedores',
-            'totales'    => ['proveedores' => $totalProveedores],
-            'por_estado' => $porEstado,
-            'nota'       => 'No existe productos.proveedor_id; se devuelve resumen básico.',
+            'range'   => ['from' => $from, 'to' => $to],
+            'mode'    => 'reporte_completo_proveedores',
+            'totales' => $totales,
+            'data'    => $proveedores->values(),
         ], Response::HTTP_OK);
     }
 

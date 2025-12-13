@@ -50,4 +50,34 @@ class PagoProveedor extends Model
     {
         return $this->belongsTo(Usuario::class);
     }
+
+    /**
+     * Relación con cheque emitido
+     */
+    public function cheque()
+    {
+        return $this->hasOne(Cheque::class, 'pago_proveedor_id');
+    }
+
+    /**
+     * Crear cheque emitido asociado a este pago
+     * 
+     * @param array $datosRequest
+     * @return Cheque
+     */
+    public function crearChequeEmitido(array $datosRequest)
+    {
+        return Cheque::create([
+            'tipo' => Cheque::TIPO_EMITIDO,
+            'pago_proveedor_id' => $this->id,
+            'proveedor_id' => $this->proveedor_id,
+            'banco' => $datosRequest['banco_cheque'],
+            'numero' => $datosRequest['numero_cheque'],
+            'monto' => $this->monto,
+            'fecha_emision' => $datosRequest['fecha_emision_cheque'],
+            'fecha_vencimiento' => $datosRequest['fecha_vencimiento_cheque'] ?? null,
+            'estado' => Cheque::ESTADO_PENDIENTE,
+            'observaciones' => $datosRequest['observaciones_cheque'] ?? null,
+        ]);
+    }
 }

@@ -6,11 +6,11 @@ import {
   updateProveedor, 
   deleteProveedor,
   getResumenCuenta,
-  getMovimientosCuenta,
-  createPagoProveedor
+  getMovimientosCuenta
 } from '@/services/proveedores'
 import { getMetodosPago } from '@/services/metodosPago'
 import { toast } from '@/plugins/toast'
+import ProveedoresCompras from './compras.vue'
 import ProveedoresPagos from './pagos.vue'
 import ProveedoresChequesEmitidos from './cheques-emitidos.vue'
 
@@ -19,20 +19,19 @@ const tabActual = ref('listado')
 
 const tabs = [
   { value: 'listado', title: 'Listado de Proveedores', icon: 'mdi-format-list-bulleted' },
+  { value: 'compras', title: 'Compras a Proveedores', icon: 'mdi-cart-plus' },
   { value: 'pagos', title: 'Pagos a Proveedores', icon: 'mdi-cash-multiple' },
   { value: 'cheques', title: 'Cheques Emitidos', icon: 'mdi-checkbook' },
 ]
 
 const proveedores = ref([])
 const proveedoresConEstado = ref([])
-const metodosPago = ref([])
 const loading = ref(false)
 const loadingEstadoCuenta = ref(false)
 const error = ref('')
 const dialog = ref(false)
 const dialogDelete = ref(false)
 const dialogEstadoCuenta = ref(false)
-const dialogNuevoPago = ref(false)
 const editedIndex = ref(-1)
 const selectedProveedor = ref(null)
 const resumenCuenta = ref(null)
@@ -58,24 +57,6 @@ const defaultItem = {
   telefono: '',
   email: '',
   estado: 'activo',
-}
-
-const nuevoPago = ref({
-  fecha_pago: new Date().toISOString().split('T')[0],
-  monto: 0,
-  metodo_pago_id: null,
-  referencia: '',
-  concepto: '',
-  observaciones: '',
-})
-
-const defaultPago = {
-  fecha_pago: new Date().toISOString().split('T')[0],
-  monto: 0,
-  metodo_pago_id: null,
-  referencia: '',
-  concepto: '',
-  observaciones: '',
 }
 
 // Filtrar proveedores por búsqueda
@@ -236,33 +217,6 @@ const verEstadoCuenta = async (item) => {
   }
 }
 
-const abrirDialogNuevoPago = () => {
-  nuevoPago.value = Object.assign({}, defaultPago)
-  nuevoPago.value.fecha_pago = new Date().toISOString().split('T')[0]
-  dialogNuevoPago.value = true
-}
-
-const guardarPago = async () => {
-  try {
-    const dataToSend = {
-      ...nuevoPago.value,
-      monto: parseFloat(nuevoPago.value.monto) || 0,
-    }
-    
-    await createPagoProveedor(selectedProveedor.value.id, dataToSend)
-    toast.success('Pago registrado correctamente')
-    closeNuevoPago()
-    
-    // Recargar estado de cuenta
-    await verEstadoCuenta(selectedProveedor.value)
-    // Recargar lista de proveedores para actualizar badges
-    await fetchProveedores()
-  } catch (e) {
-    const errorMsg = e.message || 'Error al registrar pago'
-    toast.error(errorMsg)
-  }
-}
-
 const close = () => {
   dialog.value = false
   error.value = ''
@@ -286,11 +240,6 @@ const closeEstadoCuenta = () => {
   selectedProveedor.value = null
   resumenCuenta.value = null
   movimientosCuenta.value = []
-}
-
-const closeNuevoPago = () => {
-  dialogNuevoPago.value = false
-  nuevoPago.value = Object.assign({}, defaultPago)
 }
 
 const save = async () => {
@@ -460,12 +409,17 @@ onMounted(() => {
         </VDataTable>
       </VWindowItem>
 
-      <!-- TAB 2: Pagos a Proveedores -->
+      <!-- TAB 2: Compras a Proveedores -->
+      <VWindowItem value="compras">
+        <ProveedoresCompras />
+      </VWindowItem>
+
+      <!-- TAB 3: Pagos a Proveedores -->
       <VWindowItem value="pagos">
         <ProveedoresPagos />
       </VWindowItem>
 
-      <!-- TAB 3: Cheques Emitidos -->
+      <!-- TAB 4: Cheques Emitidos -->
       <VWindowItem value="cheques">
         <ProveedoresChequesEmitidos />
       </VWindowItem>
@@ -561,15 +515,9 @@ onMounted(() => {
     <VDialog v-model="dialogEstadoCuenta" max-width="1200px" scrollable>
       <VCard>
         <VCardTitle>
-          <div class="d-flex justify-space-between align-center">
-            <span class="text-h5">
-              Estado de Cuenta - {{ selectedProveedor?.nombre }}
-            </span>
-            <VBtn color="primary" size="small" @click="abrirDialogNuevoPago">
-              <VIcon start>mdi-plus</VIcon>
-              Registrar Pago
-            </VBtn>
-          </div>
+          <span class="text-h5">
+            Estado de Cuenta - {{ selectedProveedor?.nombre }}
+          </span>
         </VCardTitle>
 
         <VCardText v-if="loadingEstadoCuenta">
@@ -675,81 +623,6 @@ onMounted(() => {
       </VCard>
     </VDialog>
 
-    <!-- Dialog para registrar nuevo pago -->
-    <VDialog v-model="dialogNuevoPago" max-width="600px">
-      <VCard>
-        <VCardTitle>
-          <span class="text-h5">Registrar Pago a Proveedor</span>
-        </VCardTitle>
 
-        <VCardText>
-          <VContainer>
-            <VRow>
-              <VCol cols="12" md="6">
-                <VTextField
-                  v-model="nuevoPago.fecha_pago"
-                  label="Fecha de Pago*"
-                  type="date"
-                  required
-                />
-              </VCol>
-              <VCol cols="12" md="6">
-                <VTextField
-                  v-model="nuevoPago.monto"
-                  label="Monto*"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  prefix="$"
-                  required
-                />
-              </VCol>
-              <VCol cols="12" md="6">
-                <VSelect
-                  v-model="nuevoPago.concepto"
-                  label="Concepto*"
-                  :items="conceptosPago"
-                  required
-                />
-              </VCol>
-              <VCol cols="12" md="6">
-                <VSelect
-                  v-model="nuevoPago.metodo_pago_id"
-                  label="Método de Pago"
-                  :items="metodosPago"
-                  item-title="nombre"
-                  item-value="id"
-                  clearable
-                />
-              </VCol>
-              <VCol cols="12">
-                <VTextField
-                  v-model="nuevoPago.referencia"
-                  label="Referencia"
-                  placeholder="Ej: Factura #123, Orden de Compra #456"
-                />
-              </VCol>
-              <VCol cols="12">
-                <VTextarea
-                  v-model="nuevoPago.observaciones"
-                  label="Observaciones"
-                  rows="3"
-                />
-              </VCol>
-            </VRow>
-          </VContainer>
-        </VCardText>
-
-        <VCardActions>
-          <VSpacer />
-          <VBtn color="error" variant="text" @click="closeNuevoPago">
-            Cancelar
-          </VBtn>
-          <VBtn color="primary" variant="elevated" @click="guardarPago">
-            Guardar Pago
-          </VBtn>
-        </VCardActions>
-      </VCard>
-    </VDialog>
   </div>
 </template>

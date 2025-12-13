@@ -31,6 +31,10 @@ class Compra extends Model
         'monto_total' => 'decimal:2',
     ];
 
+    protected $attributes = [
+        'estado' => 'pendiente',
+    ];
+
     public function proveedor()
     {
         return $this->belongsTo(Proveedor::class, 'proveedor_id');
