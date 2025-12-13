@@ -94,11 +94,18 @@ class RegistrarVentaService
                     ]);
             }
             
-            // 11. El estado_pago se calcula automáticamente mediante el Accessor del modelo
-            // No hace falta llamar a determinarEstadoPago() manualmente
-            // Solo hacemos un save() para refrescar el modelo
-            $venta->touch();
+            // 11. Calcular y persistir el estado_pago en la base de datos
+            // El Accessor calcula el valor correctamente en tiempo real,
+            // pero necesitamos guardarlo en la DB para los reportes
+            $venta = $venta->fresh(['items', 'pagos', 'cliente', 'cheques']);
+            $estadoPagoCalculado = $venta->estado_pago; // Trigger del Accessor
             
+            // Actualizar directamente en DB sin trigger de eventos
+            DB::table('ventas')
+                ->where('id', $venta->id)
+                ->update(['estado_pago' => $estadoPagoCalculado]);
+            
+            // Refrescar modelo con el valor actualizado
             return $venta->fresh(['items', 'pagos', 'cliente', 'cheques']);
         });
     }
