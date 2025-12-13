@@ -432,7 +432,6 @@ const formatPrice = (value) => {
                     @click="eliminarItem(index)"
                     :disabled="nuevaCompra.detalles.length === 1"
                   >
-                    <VIcon>mdi-delete</VIcon>
                     <VTooltip activator="parent" location="top">
                       {{ nuevaCompra.detalles.length === 1 ? 'Debe haber al menos un item' : 'Eliminar item' }}
                     </VTooltip>
