@@ -69,6 +69,7 @@ const headersProveedores = [
   { title: 'Estado', key: 'estado', width: 100 },
   { title: '# Compras', key: 'cantidad_compras', width: 110 },
   { title: 'Total Compras', key: 'total_compras', width: 140 },
+  { title: 'Part. Ventas %', key: 'participacion', width: 130 },
   { title: '# Pagos', key: 'cantidad_pagos', width: 100 },
   { title: 'Total Pagos', key: 'total_pagos', width: 140 },
   { title: 'Saldo', key: 'saldo', width: 130 },
@@ -335,6 +336,11 @@ onMounted(fetchReportes)
               </template>
               <template #item.total_compras="{ item }">
                 {{ formatPrice(item.total_compras) }}
+              </template>
+              <template #item.participacion="{ item }">
+                <VChip color="primary" size="small" variant="tonal">
+                  {{ item.participacion }}%
+                </VChip>
               </template>
               <template #item.total_pagos="{ item }">
                 {{ formatPrice(item.total_pagos) }}

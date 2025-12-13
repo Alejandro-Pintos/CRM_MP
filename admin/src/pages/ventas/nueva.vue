@@ -94,6 +94,13 @@ const tieneCuentaCorriente = computed(() => {
   return clienteSeleccionado.value && (clienteSeleccionado.value.limite_credito ?? 0) > 0
 })
 
+// Subtotal del producto actual (reactivo)
+const subtotalProductoActual = computed(() => {
+  const cantidad = parseFloat(cantidadProducto.value) || 0
+  const precio = parseFloat(precioProducto.value) || 0
+  return cantidad * precio
+})
+
 const creditoDisponible = computed(() => {
   if (!tieneCuentaCorriente.value) return 0
   const limite = parseFloat(clienteSeleccionado.value.limite_credito || 0)
@@ -946,6 +953,28 @@ watch(() => venta.value.tipo_comprobante, (newVal) => {
                       <VIcon size="18">ri-add-line</VIcon>
                       Agregar
                     </VBtn>
+                  </VCol>
+                </VRow>
+
+                <!-- Subtotal Reactivo -->
+                <VRow v-if="productoSeleccionado" class="mt-2">
+                  <VCol cols="12">
+                    <VAlert
+                      color="primary"
+                      variant="tonal"
+                      density="compact"
+                      class="mb-0"
+                    >
+                      <div class="d-flex justify-space-between align-center">
+                        <div class="text-body-2">
+                          <VIcon size="18" class="mr-1">ri-calculator-line</VIcon>
+                          <strong>Subtotal:</strong> {{ cantidadProducto }} × {{ formatPrice(precioProducto) }}
+                        </div>
+                        <div class="text-h6 font-weight-bold">
+                          {{ formatPrice(subtotalProductoActual) }}
+                        </div>
+                      </div>
+                    </VAlert>
                   </VCol>
                 </VRow>
               </VCardText>

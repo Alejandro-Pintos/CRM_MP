@@ -4,20 +4,20 @@ import { ref } from 'vue'
 const activeSection = ref('introduccion')
 
 const sections = [
-  { id: 'introduccion', title: '1. Introducción' },
-  { id: 'requisitos', title: '2. Requisitos y Acceso' },
-  { id: 'estructura', title: '3. Estructura General del Sistema' },
-  { id: 'clientes', title: '4. Módulo Clientes' },
-  { id: 'productos', title: '5. Módulo Productos' },
-  { id: 'proveedores', title: '6. Módulo Proveedores' },
-  { id: 'ventas', title: '7. Módulo Ventas' },
-  { id: 'pagos', title: '8. Módulo Pagos' },
-  { id: 'pedidos', title: '9. Módulo Pedidos' },
-  { id: 'empleados', title: '10. Módulo Empleados / Usuarios' },
-  { id: 'reportes', title: '11. Módulo Reportes' },
-  { id: 'perfil', title: '12. Perfil de Usuario' },
-  { id: 'buenas-practicas', title: '13. Buenas Prácticas de Uso' },
-  { id: 'faq', title: '14. Preguntas Frecuentes (FAQ)' }
+  { id: 'introduccion', title: '1. Introducción', icon: 'mdi-information' },
+  { id: 'requisitos', title: '2. Requisitos y Acceso', icon: 'mdi-key' },
+  { id: 'estructura', title: '3. Estructura General', icon: 'mdi-view-dashboard' },
+  { id: 'clientes', title: '4. Módulo Clientes', icon: 'mdi-account-group' },
+  { id: 'productos', title: '5. Módulo Productos', icon: 'mdi-package-variant' },
+  { id: 'proveedores', title: '6. Módulo Proveedores', icon: 'mdi-truck-delivery' },
+  { id: 'ventas', title: '7. Módulo Ventas', icon: 'mdi-cart' },
+  { id: 'pagos', title: '8. Módulo Pagos', icon: 'mdi-cash-multiple' },
+  { id: 'pedidos', title: '9. Módulo Pedidos', icon: 'mdi-clipboard-list' },
+  { id: 'empleados', title: '10. Módulo Empleados', icon: 'mdi-account-tie' },
+  { id: 'reportes', title: '11. Módulo Reportes', icon: 'mdi-chart-bar' },
+  { id: 'perfil', title: '12. Perfil de Usuario', icon: 'mdi-account-circle' },
+  { id: 'buenas-practicas', title: '13. Buenas Prácticas', icon: 'mdi-star' },
+  { id: 'faq', title: '14. Preguntas Frecuentes', icon: 'mdi-help-circle' }
 ]
 
 const scrollToSection = (sectionId) => {
@@ -69,6 +69,9 @@ const scrollToSection = (sectionId) => {
               @click="scrollToSection(section.id)"
               class="cursor-pointer"
             >
+              <template #prepend>
+                <VIcon :icon="section.icon" size="20" class="mr-2" />
+              </template>
               <VListItemTitle>{{ section.title }}</VListItemTitle>
             </VListItem>
           </VList>
@@ -85,7 +88,8 @@ const scrollToSection = (sectionId) => {
           id="introduccion"
           class="mb-6"
         >
-          <VCardTitle class="text-h5 font-weight-bold">
+          <VCardTitle class="text-h5 font-weight-bold d-flex align-center">
+            <VIcon icon="mdi-information" size="28" class="mr-3" color="primary" />
             1. Introducción
           </VCardTitle>
           <VDivider />
@@ -115,7 +119,8 @@ const scrollToSection = (sectionId) => {
           id="requisitos"
           class="mb-6"
         >
-          <VCardTitle class="text-h5 font-weight-bold">
+          <VCardTitle class="text-h5 font-weight-bold d-flex align-center">
+            <VIcon icon="mdi-key" size="28" class="mr-3" color="primary" />
             2. Requisitos y Acceso
           </VCardTitle>
           <VDivider />
@@ -175,7 +180,8 @@ const scrollToSection = (sectionId) => {
           id="estructura"
           class="mb-6"
         >
-          <VCardTitle class="text-h5 font-weight-bold">
+          <VCardTitle class="text-h5 font-weight-bold d-flex align-center">
+            <VIcon icon="mdi-view-dashboard" size="28" class="mr-3" color="primary" />
             3. Estructura General del Sistema
           </VCardTitle>
           <VDivider />
@@ -238,7 +244,8 @@ const scrollToSection = (sectionId) => {
           id="clientes"
           class="mb-6"
         >
-          <VCardTitle class="text-h5 font-weight-bold">
+          <VCardTitle class="text-h5 font-weight-bold d-flex align-center">
+            <VIcon icon="mdi-account-group" size="28" class="mr-3" color="primary" />
             4. Módulo Clientes
           </VCardTitle>
           <VDivider />
@@ -312,7 +319,8 @@ const scrollToSection = (sectionId) => {
           id="productos"
           class="mb-6"
         >
-          <VCardTitle class="text-h5 font-weight-bold">
+          <VCardTitle class="text-h5 font-weight-bold d-flex align-center">
+            <VIcon icon="mdi-package-variant" size="28" class="mr-3" color="primary" />
             5. Módulo Productos
           </VCardTitle>
           <VDivider />
@@ -380,16 +388,18 @@ const scrollToSection = (sectionId) => {
           id="proveedores"
           class="mb-6"
         >
-          <VCardTitle class="text-h5 font-weight-bold">
+          <VCardTitle class="text-h5 font-weight-bold d-flex align-center">
+            <VIcon icon="mdi-truck-delivery" size="28" class="mr-3" color="primary" />
             6. Módulo Proveedores
           </VCardTitle>
           <VDivider />
           <VCardText>
             <h3 class="text-h6 font-weight-bold mb-3">
+              <VIcon icon="mdi-information-outline" size="20" class="mr-2" />
               Descripción
             </h3>
             <p class="text-body-1 mb-4">
-              Gestione proveedores, cuentas corrientes, cheques emitidos y estados de cuenta.
+              Gestione proveedores, cuentas corrientes, compras, pagos, cheques emitidos y estados de cuenta. El módulo incluye tres pestañas principales: Listado de Proveedores, Compras a Proveedores, y Pagos a Proveedores.
             </p>
 
             <h3 class="text-h6 font-weight-bold mb-3">
@@ -418,6 +428,39 @@ const scrollToSection = (sectionId) => {
             </ol>
 
             <h3 class="text-h6 font-weight-bold mb-3">
+              <VIcon icon="mdi-cart-plus" size="20" class="mr-2" />
+              Registrar Compra a Proveedor
+            </h3>
+            <ol class="mb-4">
+              <li class="mb-2">Vaya a <strong>"Proveedores"</strong> → <strong>"Compras a Proveedores"</strong></li>
+              <li class="mb-2">Seleccione el proveedor y haga clic en <strong>"Registrar Compra"</strong></li>
+              <li class="mb-2">Complete la fecha de compra y agregue los items:
+                <ul class="mt-2">
+                  <li>Descripción del producto/material</li>
+                  <li>Cantidad</li>
+                  <li>Precio unitario</li>
+                  <li>IVA (opcional)</li>
+                </ul>
+              </li>
+              <li class="mb-2">El sistema no permite agregar items vacíos (validación automática)</li>
+              <li class="mb-2">Revise el total y confirme la compra</li>
+            </ol>
+
+            <h3 class="text-h6 font-weight-bold mb-3">
+              <VIcon icon="mdi-cash-multiple" size="20" class="mr-2" />
+              Registrar Pago a Proveedor
+            </h3>
+            <ol class="mb-4">
+              <li class="mb-2">Vaya a <strong>"Proveedores"</strong> → <strong>"Pagos a Proveedores"</strong></li>
+              <li class="mb-2">El sistema muestra solo proveedores con saldo pendiente</li>
+              <li class="mb-2">Seleccione el proveedor y haga clic en <strong>"Registrar Pago"</strong></li>
+              <li class="mb-2">Ingrese el monto a pagar</li>
+              <li class="mb-2">Seleccione el método de pago (Efectivo, Transferencia, Cheque)</li>
+              <li class="mb-2">Si paga con cheque, complete los datos del cheque</li>
+            </ol>
+
+            <h3 class="text-h6 font-weight-bold mb-3">
+              <VIcon icon="mdi-checkbook" size="20" class="mr-2" />
               Gestión de Cheques Emitidos
             </h3>
             <p class="text-body-1 mb-2">
@@ -428,32 +471,20 @@ const scrollToSection = (sectionId) => {
                 Vaya a <strong>"Proveedores"</strong> → <strong>"Cheques Emitidos"</strong>
               </li>
               <li class="mb-2">
-                Haga clic en <strong>"Nuevo Cheque"</strong>
+                Visualice todos los cheques emitidos con filtros por estado
               </li>
               <li class="mb-2">
-                Complete:
+                Cheques creados desde "Pagos a Proveedores" aparecen aquí automáticamente
+              </li>
+              <li class="mb-2">
+                Cambie el estado del cheque según corresponda:
                 <ul class="mt-2">
-                  <li>Proveedor destinatario</li>
-                  <li>Número de cheque</li>
-                  <li>Monto</li>
-                  <li>Fecha de emisión</li>
-                  <li>Fecha de vencimiento</li>
-                  <li>Observaciones (opcional)</li>
+                  <li><strong>Pendiente:</strong> Cheque emitido, no cobrado</li>
+                  <li><strong>Cobrado:</strong> Proveedor cobró el cheque</li>
+                  <li><strong>Rechazado:</strong> Cheque rechazado por el banco</li>
                 </ul>
               </li>
-              <li class="mb-2">
-                El estado inicial será "Pendiente"
-              </li>
             </ol>
-
-            <h3 class="text-h6 font-weight-bold mb-3">
-              Estados de Cheques
-            </h3>
-            <ul class="mb-4">
-              <li><strong>Pendiente:</strong> Cheque emitido, aún no cobrado</li>
-              <li><strong>Cobrado:</strong> El proveedor cobró el cheque</li>
-              <li><strong>Rechazado:</strong> El cheque fue rechazado por el banco</li>
-            </ul>
           </VCardText>
         </VCard>
 
@@ -462,19 +493,22 @@ const scrollToSection = (sectionId) => {
           id="ventas"
           class="mb-6"
         >
-          <VCardTitle class="text-h5 font-weight-bold">
+          <VCardTitle class="text-h5 font-weight-bold d-flex align-center">
+            <VIcon icon="mdi-cart" size="28" class="mr-3" color="primary" />
             7. Módulo Ventas
           </VCardTitle>
           <VDivider />
           <VCardText>
             <h3 class="text-h6 font-weight-bold mb-3">
+              <VIcon icon="mdi-information-outline" size="20" class="mr-2" />
               Descripción
             </h3>
             <p class="text-body-1 mb-4">
-              Registre y gestione todas las ventas realizadas, con diferentes formas de pago y seguimiento de cuenta corriente.
+              Registre y gestione todas las ventas realizadas, con diferentes formas de pago y seguimiento de cuenta corriente. Incluye indicador visual de subtotal reactivo para facilitar el proceso de venta.
             </p>
 
             <h3 class="text-h6 font-weight-bold mb-3">
+              <VIcon icon="mdi-cash-register" size="20" class="mr-2" />
               Cómo Registrar una Venta
             </h3>
             <ol class="mb-4">
@@ -490,9 +524,10 @@ const scrollToSection = (sectionId) => {
               <li class="mb-2">
                 Agregue productos:
                 <ul class="mt-2">
-                  <li>Busque el producto</li>
+                  <li>Busque el producto por nombre o código</li>
                   <li>Ingrese la cantidad</li>
-                  <li>El sistema calculará el subtotal automáticamente</li>
+                  <li>🆕 <strong>Nuevo:</strong> Verá un indicador visual del subtotal (cantidad × precio) que se actualiza en tiempo real</li>
+                  <li>Haga clic en "Agregar" para añadir el producto al carrito</li>
                 </ul>
               </li>
               <li class="mb-2">
@@ -523,7 +558,8 @@ const scrollToSection = (sectionId) => {
           id="pagos"
           class="mb-6"
         >
-          <VCardTitle class="text-h5 font-weight-bold">
+          <VCardTitle class="text-h5 font-weight-bold d-flex align-center">
+            <VIcon icon="mdi-cash-multiple" size="28" class="mr-3" color="primary" />
             8. Módulo Pagos
           </VCardTitle>
           <VDivider />
@@ -596,7 +632,8 @@ const scrollToSection = (sectionId) => {
           id="pedidos"
           class="mb-6"
         >
-          <VCardTitle class="text-h5 font-weight-bold">
+          <VCardTitle class="text-h5 font-weight-bold d-flex align-center">
+            <VIcon icon="mdi-clipboard-list" size="28" class="mr-3" color="primary" />
             9. Módulo Pedidos
           </VCardTitle>
           <VDivider />
@@ -658,7 +695,8 @@ const scrollToSection = (sectionId) => {
           id="empleados"
           class="mb-6"
         >
-          <VCardTitle class="text-h5 font-weight-bold">
+          <VCardTitle class="text-h5 font-weight-bold d-flex align-center">
+            <VIcon icon="mdi-account-tie" size="28" class="mr-3" color="primary" />
             10. Módulo Empleados / Usuarios
           </VCardTitle>
           <VDivider />
@@ -719,28 +757,34 @@ const scrollToSection = (sectionId) => {
           id="reportes"
           class="mb-6"
         >
-          <VCardTitle class="text-h5 font-weight-bold">
+          <VCardTitle class="text-h5 font-weight-bold d-flex align-center">
+            <VIcon icon="mdi-chart-bar" size="28" class="mr-3" color="primary" />
             11. Módulo Reportes
           </VCardTitle>
           <VDivider />
           <VCardText>
             <h3 class="text-h6 font-weight-bold mb-3">
+              <VIcon icon="mdi-information-outline" size="20" class="mr-2" />
               Descripción
             </h3>
             <p class="text-body-1 mb-4">
-              Genere reportes detallados de ventas, productos, clientes y proveedores con filtros personalizados.
+              Genere reportes detallados de ventas, productos, clientes y proveedores con filtros personalizados. Todos los reportes incluyen gráficos interactivos y exportación a Excel/CSV.
             </p>
 
             <h3 class="text-h6 font-weight-bold mb-3">
+              <VIcon icon="mdi-file-chart" size="20" class="mr-2" />
               Tipos de Reportes Disponibles
             </h3>
             <ul class="mb-4">
-              <li><strong>Reporte de Ventas:</strong> Ventas por período, cliente, producto o vendedor</li>
-              <li><strong>Reporte de Productos:</strong> Stock actual, movimientos, productos más vendidos</li>
-              <li><strong>Reporte de Clientes:</strong> Cuentas corrientes, estados de cuenta, historial</li>
-              <li><strong>Reporte de Proveedores:</strong> Pagos, cheques emitidos, cuentas corrientes</li>
-              <li><strong>Reporte de Pagos:</strong> Cobros realizados, formas de pago, cheques</li>
+              <li><strong>Reporte de Ventas:</strong> Ventas por período con métricas (ticket promedio, clientes únicos, productos vendidos, estado de pago)</li>
+              <li><strong>Reporte de Clientes:</strong> Top clientes por ingresos, cuentas corrientes, estados de cuenta con 11 columnas de información</li>
+              <li><strong>Reporte de Productos:</strong> Productos más vendidos, ingresos por producto, información de proveedores con 9 columnas</li>
+              <li><strong>Reporte de Proveedores:</strong> Compras, pagos, saldo, participación en ventas, productos asociados con 14 columnas</li>
             </ul>
+
+            <VAlert type="info" variant="tonal" class="mb-4">
+              <strong>🆕 Nuevo:</strong> El reporte de proveedores ahora incluye la columna "Part. Ventas %" que muestra el porcentaje de participación de cada proveedor en las ventas totales basado en sus productos.
+            </VAlert>
 
             <h3 class="text-h6 font-weight-bold mb-3">
               Cómo Generar un Reporte
@@ -787,7 +831,8 @@ const scrollToSection = (sectionId) => {
           id="perfil"
           class="mb-6"
         >
-          <VCardTitle class="text-h5 font-weight-bold">
+          <VCardTitle class="text-h5 font-weight-bold d-flex align-center">
+            <VIcon icon="mdi-account-circle" size="28" class="mr-3" color="primary" />
             12. Perfil de Usuario y Configuración Básica
           </VCardTitle>
           <VDivider />
@@ -851,7 +896,8 @@ const scrollToSection = (sectionId) => {
           id="buenas-practicas"
           class="mb-6"
         >
-          <VCardTitle class="text-h5 font-weight-bold">
+          <VCardTitle class="text-h5 font-weight-bold d-flex align-center">
+            <VIcon icon="mdi-star" size="28" class="mr-3" color="primary" />
             13. Buenas Prácticas de Uso
           </VCardTitle>
           <VDivider />
@@ -933,7 +979,8 @@ const scrollToSection = (sectionId) => {
           id="faq"
           class="mb-6"
         >
-          <VCardTitle class="text-h5 font-weight-bold">
+          <VCardTitle class="text-h5 font-weight-bold d-flex align-center">
+            <VIcon icon="mdi-help-circle" size="28" class="mr-3" color="primary" />
             14. Preguntas Frecuentes (FAQ)
           </VCardTitle>
           <VDivider />
