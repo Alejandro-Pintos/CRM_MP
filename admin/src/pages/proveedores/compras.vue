@@ -420,15 +420,23 @@ const formatPrice = (value) => {
             <VCol cols="12" v-for="(item, index) in nuevaCompra.detalles" :key="index">
               <VCard variant="outlined" class="pa-4">
                 <div class="d-flex justify-space-between align-center mb-3">
-                  <div class="text-subtitle-1 font-weight-bold">Item #{{ index + 1 }}</div>
+                  <div class="d-flex align-center">
+                    <VIcon icon="mdi-package-variant" size="20" color="primary" class="mr-2" />
+                    <div class="text-subtitle-1 font-weight-bold">Item #{{ index + 1 }}</div>
+                  </div>
                   <VBtn
                     icon="mdi-delete"
                     size="small"
                     color="error"
-                    variant="text"
+                    variant="tonal"
                     @click="eliminarItem(index)"
                     :disabled="nuevaCompra.detalles.length === 1"
-                  />
+                  >
+                    <VIcon>mdi-delete</VIcon>
+                    <VTooltip activator="parent" location="top">
+                      {{ nuevaCompra.detalles.length === 1 ? 'Debe haber al menos un item' : 'Eliminar item' }}
+                    </VTooltip>
+                  </VBtn>
                 </div>
 
                 <VRow>
@@ -442,6 +450,7 @@ const formatPrice = (value) => {
                       required
                       :rules="[v => !!v?.trim() || 'Debe especificar qué se compró']"
                       :error="!item.descripcion?.trim() && item.descripcion !== ''"
+                      clearable
                     />
                   </VCol>
 
@@ -488,6 +497,7 @@ const formatPrice = (value) => {
                       variant="outlined"
                       prepend-inner-icon="mdi-sale"
                       @input="calcularSubtotalItem(item)"
+                      clearable
                     />
                   </VCol>
 
@@ -500,6 +510,7 @@ const formatPrice = (value) => {
                       suffix="%"
                       variant="outlined"
                       prepend-inner-icon="mdi-percent"
+                      clearable
                     />
                   </VCol>
 
@@ -511,6 +522,7 @@ const formatPrice = (value) => {
                       readonly
                       prepend-inner-icon="mdi-calculator"
                       class="font-weight-bold"
+                      bg-color="grey-lighten-4"
                     />
                   </VCol>
                 </VRow>
