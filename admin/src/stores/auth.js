@@ -70,5 +70,17 @@ export const useAuthStore = defineStore('auth', {
       this.setUser(null)
       this.setToken(null)
     },
+
+    async refreshPermissions() {
+      // Actualizar datos del usuario desde la API para obtener permisos actualizados
+      try {
+        const userData = await getMe()
+        this.setUser(userData)
+        return userData
+      } catch (error) {
+        console.error('Error al refrescar permisos:', error)
+        throw error
+      }
+    },
   },
 })

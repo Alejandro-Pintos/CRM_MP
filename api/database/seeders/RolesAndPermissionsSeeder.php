@@ -18,6 +18,8 @@ class RolesAndPermissionsSeeder extends Seeder
         $clientes = ['clientes.index','clientes.store','clientes.update','clientes.destroy'];
         $productos = ['productos.index','productos.store','productos.update','productos.destroy'];
         $proveedores = ['proveedores.index','proveedores.store','proveedores.update','proveedores.destroy'];
+        $proveedoresCompras = ['proveedores.compras.index','proveedores.compras.store','proveedores.compras.show','proveedores.compras.destroy'];
+        $proveedoresPagos = ['proveedores.pagos.index','proveedores.pagos.store','proveedores.pagos.show','proveedores.pagos.destroy'];
         $empleados = ['empleados.index','empleados.store','empleados.update','empleados.destroy'];
         $usuarios = ['usuarios.index','usuarios.store','usuarios.update','usuarios.destroy'];
         $usuariosGestion = ['users.manage', 'users.create', 'users.edit', 'users.delete'];
@@ -37,6 +39,8 @@ class RolesAndPermissionsSeeder extends Seeder
             $clientes, 
             $productos, 
             $proveedores,
+            $proveedoresCompras,
+            $proveedoresPagos,
             $empleados,
             $usuarios, 
             $usuariosGestion,
