@@ -105,6 +105,9 @@ const conceptosPago = [
   { value: 'otro', title: 'Otro' },
 ]
 
+// Métodos de pago disponibles
+const metodosPago = ref([])
+
 const fetchProveedores = async () => {
   loading.value = true
   error.value = ''
