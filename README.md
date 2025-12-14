@@ -1,292 +1,203 @@
-# CRM Maderas Pani
+# CRM-MP - Sistema de Gestión Empresarial
 
-Sistema de gestión de relaciones con clientes (CRM) completo desarrollado para Maderas Pani, con funcionalidades de ventas, inventario, gestión de clientes, proveedores, empleados y reportes.
+<div align="center">
+  
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+  [![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?logo=laravel)](https://laravel.com)
+  [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-4FC08D?logo=vue.js)](https://vuejs.org)
+  [![Vuetify](https://img.shields.io/badge/Vuetify-3.x-1867C0?logo=vuetify)](https://vuetifyjs.com)
+  
+</div>
 
-## 🚀 Stack Tecnológico
+## 📋 Descripción
 
-### Backend
-- **Framework:** Laravel 12
-- **Base de datos:** MySQL 8.0+
-- **Autenticación:** JWT (tymon/jwt-auth)
-- **Permisos:** Spatie Laravel Permission
-- **API:** RESTful API con versionado (v1)
-
-### Frontend
-- **Framework:** Vue 3 (Composition API)
-- **Build tool:** Vite 5.2.10
-- **UI Framework:** Vuetify 3
-- **Routing:** Vue Router (file-based routing)
-- **State Management:** Pinia
-- **HTTP Client:** Fetch API nativo
+CRM-MP es un sistema integral de gestión empresarial desarrollado con tecnologías modernas, diseñado para optimizar la administración de clientes, proveedores, ventas, compras, inventarios y finanzas. Ofrece una interfaz intuitiva y profesional para empresas que buscan digitalizar y centralizar sus operaciones comerciales.
 
 ---
 
-## 📋 Funcionalidades Principales
+## ✨ Características Principales
 
-### 🔐 Autenticación y Autorización
-- Login con JWT
-- Gestión de permisos basada en roles (admin, vendedor, operador)
-- Perfil de usuario editable (nombre, email, contraseña, avatar)
-- Sistema de tokens con refresh automático
-
-### 👥 Gestión de Clientes
-- CRUD completo de clientes
-- Cuenta corriente por cliente
-- Historial de ventas
-- Filtros y búsqueda avanzada
-- Exportación de datos (CSV, Excel)
-
-### 📦 Gestión de Productos
-- Inventario completo
-- Control de stock
-- Categorías y subcategorías
-- Sistema de precios dinámico
-- Búsqueda y filtros
+### 🧑‍💼 Gestión de Clientes
+- ✅ CRUD completo de clientes con datos de contacto
+- ✅ Historial de ventas por cliente
+- ✅ Sistema de cuenta corriente con seguimiento de deuda
+- ✅ Consulta de estado de cuenta con movimientos detallados
+- ✅ Filtros avanzados y búsqueda rápida
+- ✅ Exportación de datos a Excel/CSV
 
 ### 🏢 Gestión de Proveedores
-- CRUD de proveedores
-- Estado de cuenta por proveedor
-- Registro de pagos a proveedores
-- Movimientos y saldos
-- Exportación de reportes
+- ✅ Administración de proveedores con datos completos
+- ✅ Registro de compras a proveedores con detalles de items
+- ✅ Sistema de pagos con múltiples métodos y conceptos
+- ✅ Control de cheques emitidos
+- ✅ Ranking por participación en ventas
+- ✅ Estado de cuenta con movimientos de débitos y créditos
 
-### 👨‍💼 Gestión de Empleados
-- CRUD de empleados
-- Registro de pagos a empleados
-- Historial de pagos
-- Filtros por estado (activo/inactivo)
+### 💰 Gestión de Ventas
+- ✅ Registro de ventas con múltiples productos
+- ✅ Cálculo automático de subtotales, impuestos y descuentos
+- ✅ Indicador reactivo de subtotal por producto
+- ✅ Múltiples métodos de pago: Efectivo, Transferencia, Débito, Crédito, Cheque, Cuenta Corriente
+- ✅ Validación de datos de cheques (banco, número, fecha)
+- ✅ Control de estado de pago (Pagado, Parcial, Pendiente)
+- ✅ Historial completo con filtros avanzados
 
-### 💰 Ventas y Facturación
-- Creación de ventas con múltiples productos
-- Previsualización de número de comprobante
-- Asociación con pedidos
-- Múltiples métodos de pago
-- Sistema de cheques (pendientes, cobrados, rechazados)
-- Cuenta corriente de clientes
+### 🛒 Gestión de Compras
+- ✅ Registro de compras con detalles de items editables
+- ✅ Edición y eliminación de items antes de confirmar
+- ✅ Campos editables: descripción, cantidad, precio, descuento, impuestos
+- ✅ Validación para mantener al menos 1 item
+- ✅ Cálculo automático de totales
+- ✅ Estados: Pendiente, Pagado, Anulado
 
-### 📊 Pedidos
-- Gestión de pedidos
-- Estados: pendiente, procesando, completado, cancelado
-- Asociación automática con ventas
-- Consulta de clima para planificación de entregas
-- Filtros avanzados
+### 💳 Sistema de Pagos
+- ✅ Registro de pagos a proveedores
+- ✅ Múltiples conceptos: Factura, Anticipo, Cancelación, Devolución
+- ✅ Integración con cuenta corriente
+- ✅ Historial con filtros por fecha y estado
 
-### 💳 Métodos de Pago
-- Efectivo
-- Transferencia
-- Cheques (con control de vencimiento)
-- Cuenta corriente
-- Consolidación de pagos
+### 🏦 Gestión de Cheques
+- **Cheques Recibidos** (de clientes):
+  - Estados: Cartera, Depositado, Rechazado, Endosado
+  - Validación de fechas de pago
+  - Gestión de acciones según estado
+- **Cheques Emitidos** (a proveedores):
+  - Estados: Emitido, Cobrado, Anulado
+  - Control de números de cheques
+  - Integración con pagos
 
-### 📈 Reportes
-- Dashboard con métricas en tiempo real
-- Reportes de ventas
-- Reportes de clientes
-- Reportes de productos
-- Reportes de proveedores
-- Exportación en múltiples formatos (CSV, Excel)
-- Reporte full consolidado
+### 📊 Reportes y Análisis
+- ✅ **Ranking de Clientes**: Top clientes por monto de compras
+- ✅ **Ranking de Productos**: Productos más vendidos con estadísticas
+- ✅ **Ranking de Proveedores**: Participación en ventas, compras e ingresos
+- ✅ **Reporte de Ventas**: Análisis por período con métodos de pago
+- ✅ Gráficos interactivos con Chart.js
+- ✅ Exportación a Excel/CSV de todos los reportes
 
-### 🔔 Sistema de Notificaciones
-- Alertas de cheques próximos a vencer
-- Alertas de stock bajo
-- Resumen de notificaciones en tiempo real
-- Badges dinámicos en el menú
+### 🏭 Gestión de Productos
+- ✅ Catálogo completo de productos
+- ✅ Asignación de proveedores
+- ✅ Control de stock
+- ✅ Precios y descripciones
+- ✅ Estados activo/inactivo
 
-### 👤 Gestión de Usuarios (ABM)
-- CRUD completo de usuarios
-- Asignación de roles
-- Gestión de permisos
-- Solo accesible para administradores
+### 👥 Gestión de Usuarios y Permisos
+- ✅ Sistema de roles y permisos con Spatie Permission
+- ✅ Autenticación JWT
+- ✅ Control de acceso granular por módulo
+- ✅ Administración de empleados
 
----
-
-## 🏗️ Arquitectura del Proyecto
-
-```
-CRM_MP/
-├── admin/                          # Frontend Vue 3
-│   ├── src/
-│   │   ├── @core/                  # Componentes core del template
-│   │   ├── @layouts/               # Layouts de la aplicación
-│   │   ├── assets/                 # Assets estáticos
-│   │   ├── components/             # Componentes reutilizables
-│   │   ├── composables/            # Composables de Vue
-│   │   ├── layouts/                # Layouts personalizados
-│   │   ├── navigation/             # Configuración de navegación
-│   │   ├── pages/                  # Páginas (file-based routing)
-│   │   │   ├── clientes/
-│   │   │   ├── productos/
-│   │   │   ├── proveedores/
-│   │   │   ├── empleados/
-│   │   │   ├── ventas/
-│   │   │   ├── pedidos/
-│   │   │   ├── reportes/
-│   │   │   ├── usuarios/
-│   │   │   └── perfil.vue
-│   │   ├── plugins/                # Plugins de Vue
-│   │   ├── router/                 # Configuración de rutas
-│   │   ├── services/               # Servicios de API
-│   │   │   ├── api.js              # Cliente HTTP base (apiFetch)
-│   │   │   ├── auth.js             # Autenticación y perfil
-│   │   │   ├── clientes.js
-│   │   │   ├── productos.js
-│   │   │   ├── proveedores.js
-│   │   │   ├── empleados.js
-│   │   │   ├── ventas.js
-│   │   │   ├── pedidos.js
-│   │   │   ├── users.js
-│   │   │   └── notificaciones.js
-│   │   ├── stores/                 # Stores de Pinia
-│   │   │   └── auth.js
-│   │   ├── utils/                  # Utilidades
-│   │   └── views/                  # Vistas adicionales
-│   ├── vite.config.js
-│   └── package.json
-│
-├── api/                            # Backend Laravel 12
-│   ├── app/
-│   │   ├── Exports/                # Clases de exportación
-│   │   ├── Http/
-│   │   │   ├── Controllers/
-│   │   │   │   ├── Api/
-│   │   │   │   │   ├── ClientesController.php
-│   │   │   │   │   ├── ProductosController.php
-│   │   │   │   │   ├── ProveedorEstadoCuentaController.php
-│   │   │   │   │   ├── PagoProveedorController.php
-│   │   │   │   │   ├── EmpleadoController.php
-│   │   │   │   │   ├── PagoEmpleadoController.php
-│   │   │   │   │   ├── PedidoController.php
-│   │   │   │   │   ├── ReporteController.php
-│   │   │   │   │   ├── NotificationController.php
-│   │   │   │   │   ├── UserController.php
-│   │   │   │   │   └── ProfileController.php
-│   │   │   │   ├── AuthController.php
-│   │   │   │   ├── VentaController.php
-│   │   │   │   ├── PagoController.php
-│   │   │   │   ├── ChequeController.php
-│   │   │   │   ├── MetodoPagoController.php
-│   │   │   │   ├── CuentaCorrienteController.php
-│   │   │   │   ├── PresupuestoController.php
-│   │   │   │   └── ProveedorController.php
-│   │   │   ├── Requests/           # Form Requests
-│   │   │   │   ├── StoreUserRequest.php
-│   │   │   │   ├── UpdateUserRequest.php
-│   │   │   │   ├── UpdateProfileRequest.php
-│   │   │   │   ├── UpdatePasswordRequest.php
-│   │   │   │   ├── StoreEmpleadoRequest.php
-│   │   │   │   └── UpdateEmpleadoRequest.php
-│   │   │   ├── Resources/          # API Resources
-│   │   │   │   ├── UserProfileResource.php
-│   │   │   │   ├── UserResource.php
-│   │   │   │   └── EmpleadoResource.php
-│   │   │   └── Middleware/
-│   │   ├── Mail/                   # Mailable classes
-│   │   ├── Models/
-│   │   │   ├── Usuario.php
-│   │   │   ├── Cliente.php
-│   │   │   ├── Producto.php
-│   │   │   ├── Proveedor.php
-│   │   │   ├── Empleado.php
-│   │   │   ├── Venta.php
-│   │   │   ├── VentaDetalle.php
-│   │   │   ├── Pago.php
-│   │   │   ├── Pedido.php
-│   │   │   └── ...
-│   │   └── Services/
-│   │       └── SystemAlertsService.php
-│   ├── config/
-│   │   ├── auth.php                # Configuración de autenticación
-│   │   ├── jwt.php                 # Configuración JWT
-│   │   └── permission.php          # Configuración Spatie
-│   ├── database/
-│   │   ├── migrations/
-│   │   └── seeders/
-│   │       └── RolesAndPermissionsSeeder.php
-│   └── routes/
-│       └── api.php                 # Rutas de la API
-│
-└── README.md                       # Este archivo
-```
+### 📱 Características de la Interfaz
+- ✅ Dashboard con estadísticas en tiempo real
+- ✅ Diseño responsive para móviles y tablets
+- ✅ Tema claro/oscuro
+- ✅ Notificaciones toast para feedback inmediato
+- ✅ Validación en tiempo real de formularios
+- ✅ Componentes reutilizables
+- ✅ Manual de usuario integrado con guías por módulo
 
 ---
 
-## 🔧 Instalación y Configuración
+## 🛠️ Stack Tecnológico
+
+### Backend
+- **Framework**: Laravel 12.x
+- **Base de Datos**: MySQL 8.0+
+- **Autenticación**: JWT (tymon/jwt-auth)
+- **Permisos**: Spatie Laravel Permission
+- **Exportaciones**: Maatwebsite Laravel Excel
+- **API**: RESTful API con Laravel Resources
+- **Validación**: Form Requests de Laravel
+
+### Frontend
+- **Framework**: Vue.js 3.x (Composition API)
+- **UI Framework**: Vuetify 3.x (Material Design)
+- **Gestión de Estado**: Pinia
+- **Router**: Vue Router 4.x
+- **HTTP Client**: Fetch API
+- **Gráficos**: Chart.js
+- **Build Tool**: Vite
+- **Notificaciones**: Vue Toastification
+
+### DevOps
+- **Contenedores**: Docker & Docker Compose
+- **Servidor Web**: Nginx
+- **Control de Versiones**: Git & GitHub
+- **Desarrollo Local**: Laragon
+
+---
+
+## 📦 Instalación
 
 ### Requisitos Previos
-- PHP 8.2+
+- PHP >= 8.2
 - Composer
-- Node.js 18+
+- Node.js >= 18.x
 - npm o pnpm
-- MySQL 8.0+
-- Laravel CLI
+- MySQL >= 8.0
+- Git
 
-### Backend (Laravel)
+### Backend (Laravel API)
 
-1. **Instalar dependencias:**
+1. **Clonar el repositorio**
 ```bash
-cd api
+git clone https://github.com/Alejandro-Pintos/CRM_MP.git
+cd CRM_MP/api
+```
+
+2. **Instalar dependencias de PHP**
+```bash
 composer install
 ```
 
-2. **Configurar variables de entorno:**
+3. **Configurar el archivo .env**
 ```bash
 cp .env.example .env
 ```
 
-Editar `.env` con tus credenciales:
+Editar `.env` con tu configuración de base de datos:
 ```env
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_DATABASE=crm_maderas_pani
+DB_DATABASE=crm_mp
 DB_USERNAME=root
 DB_PASSWORD=
-
-JWT_SECRET=tu_secret_key_aqui
 ```
 
-3. **Generar claves:**
+4. **Generar clave de aplicación y JWT**
 ```bash
 php artisan key:generate
 php artisan jwt:secret
 ```
 
-4. **Ejecutar migraciones y seeders:**
+5. **Ejecutar migraciones y seeders**
 ```bash
-php artisan migrate
-php artisan db:seed --class=RolesAndPermissionsSeeder
+php artisan migrate --seed
 ```
 
-5. **Crear enlace simbólico del storage:**
-```bash
-php artisan storage:link
-```
-
-6. **Limpiar caché de permisos:**
-```bash
-php artisan permission:cache-reset
-```
-
-7. **Iniciar servidor de desarrollo:**
+6. **Iniciar servidor de desarrollo**
 ```bash
 php artisan serve
 ```
+
 El backend estará disponible en `http://localhost:8000`
 
----
+### Frontend (Vue.js Admin)
 
-### Frontend (Vue 3)
-
-1. **Instalar dependencias:**
+1. **Navegar al directorio del frontend**
 ```bash
-cd admin
+cd ../admin
+```
+
+2. **Instalar dependencias**
+```bash
 npm install
 # o con pnpm
 pnpm install
 ```
 
-2. **Configurar variables de entorno:**
+3. **Configurar variables de entorno**
 ```bash
 cp .env.example .env
 ```
@@ -296,486 +207,265 @@ Editar `.env`:
 VITE_API_BASE_URL=http://127.0.0.1:8000
 ```
 
-3. **Iniciar servidor de desarrollo:**
+4. **Iniciar servidor de desarrollo**
 ```bash
 npm run dev
 # o con pnpm
 pnpm dev
 ```
+
 El frontend estará disponible en `http://localhost:5173`
 
----
-
-## 🔑 Credenciales por Defecto
-
-Después de ejecutar el seeder, usa estas credenciales para acceder:
-
-**Usuario Administrador:**
-- Email: `admin@example.com`
-- Password: `password`
-
-**Roles disponibles:**
-- `admin` - Acceso completo al sistema
-- `vendedor` - Acceso a ventas y clientes
-- `operador` - Acceso limitado
+### Credenciales por Defecto
+- **Email**: admin@example.com
+- **Password**: password
 
 ---
 
-## 🌐 API Endpoints
+## 🐳 Instalación con Docker
+
+```bash
+# Backend
+cd api
+docker-compose -f docker-compose.dev.yml up -d
+
+# Frontend
+cd ../admin
+docker-compose -f docker-compose.dev.yml up -d
+```
+
+---
+
+## 📁 Estructura del Proyecto
+
+```
+CRM_MP/
+├── api/                          # Backend Laravel
+│   ├── app/
+│   │   ├── Http/
+│   │   │   ├── Controllers/      # Controladores de la API
+│   │   │   ├── Requests/         # Form Requests de validación
+│   │   │   └── Resources/        # API Resources
+│   │   ├── Models/               # Modelos Eloquent
+│   │   ├── Services/             # Lógica de negocio
+│   │   └── Exports/              # Exportaciones Excel
+│   ├── database/
+│   │   ├── migrations/           # Migraciones de BD
+│   │   └── seeders/              # Seeders
+│   ├── routes/
+│   │   └── api.php               # Rutas de la API
+│   └── config/                   # Configuraciones
+│
+├── admin/                        # Frontend Vue.js
+│   ├── src/
+│   │   ├── pages/                # Páginas/Vistas
+│   │   │   ├── clientes/
+│   │   │   ├── proveedores/
+│   │   │   ├── ventas/
+│   │   │   ├── productos/
+│   │   │   └── reportes/
+│   │   ├── components/           # Componentes reutilizables
+│   │   ├── layouts/              # Layouts de la aplicación
+│   │   ├── router/               # Configuración de rutas
+│   │   ├── stores/               # Stores de Pinia
+│   │   ├── services/             # Servicios de API
+│   │   └── composables/          # Composables de Vue
+│   ├── public/                   # Archivos estáticos
+│   └── vite.config.js            # Configuración de Vite
+│
+├── LICENSE                       # Licencia MIT
+└── README.md                     # Este archivo
+```
+
+---
+
+## 🔌 API Endpoints Principales
 
 ### Autenticación
-```http
-POST   /api/login                    # Login
-POST   /api/v1/logout                # Logout
-POST   /api/v1/refresh               # Refresh token
-POST   /api/v1/me                    # Usuario autenticado
-```
-
-### Perfil de Usuario
-```http
-GET    /api/v1/profile               # Ver perfil
-PUT    /api/v1/profile               # Actualizar datos
-PUT    /api/v1/profile/password      # Cambiar contraseña
-POST   /api/v1/profile/avatar        # Subir avatar
-```
-
-### Usuarios (ABM)
-```http
-GET    /api/v1/users                 # Listar usuarios
-POST   /api/v1/users                 # Crear usuario
-GET    /api/v1/users/{id}            # Ver usuario
-PUT    /api/v1/users/{id}            # Actualizar usuario
-DELETE /api/v1/users/{id}            # Eliminar usuario
-```
+- `POST /api/login` - Iniciar sesión
+- `POST /api/v1/logout` - Cerrar sesión
+- `POST /api/v1/me` - Obtener usuario autenticado
+- `POST /api/v1/refresh` - Refrescar token
 
 ### Clientes
-```http
-GET    /api/v1/clientes              # Listar
-POST   /api/v1/clientes              # Crear
-GET    /api/v1/clientes/{id}         # Ver
-PUT    /api/v1/clientes/{id}         # Actualizar
-DELETE /api/v1/clientes/{id}         # Eliminar
-GET    /api/v1/clientes/{id}/cuenta-corriente  # Cuenta corriente
-```
-
-### Productos
-```http
-GET    /api/v1/productos             # Listar
-POST   /api/v1/productos             # Crear
-GET    /api/v1/productos/{id}        # Ver
-PUT    /api/v1/productos/{id}        # Actualizar
-DELETE /api/v1/productos/{id}        # Eliminar
-```
+- `GET /api/v1/clientes` - Listar clientes
+- `POST /api/v1/clientes` - Crear cliente
+- `GET /api/v1/clientes/{id}` - Ver cliente
+- `PUT /api/v1/clientes/{id}` - Actualizar cliente
+- `DELETE /api/v1/clientes/{id}` - Eliminar cliente
+- `GET /api/v1/clientes/{id}/cuenta` - Estado de cuenta
 
 ### Proveedores
-```http
-GET    /api/v1/proveedores           # Listar
-POST   /api/v1/proveedores           # Crear
-GET    /api/v1/proveedores/{id}      # Ver
-PUT    /api/v1/proveedores/{id}      # Actualizar
-DELETE /api/v1/proveedores/{id}      # Eliminar
-GET    /api/v1/proveedores/{id}/cuenta/resumen        # Resumen
-GET    /api/v1/proveedores/{id}/cuenta/movimientos    # Movimientos
-GET    /api/v1/proveedores/{id}/pagos                 # Pagos
-POST   /api/v1/proveedores/{id}/pagos                 # Registrar pago
-```
-
-### Empleados
-```http
-GET    /api/v1/empleados             # Listar
-POST   /api/v1/empleados             # Crear
-GET    /api/v1/empleados/{id}        # Ver
-PUT    /api/v1/empleados/{id}        # Actualizar
-DELETE /api/v1/empleados/{id}        # Eliminar
-GET    /api/v1/empleados/{id}/pagos  # Pagos del empleado
-POST   /api/v1/empleados/{id}/pagos  # Registrar pago
-```
+- `GET /api/v1/proveedores` - Listar proveedores
+- `POST /api/v1/proveedores` - Crear proveedor
+- `GET /api/v1/proveedores/{id}/compras` - Compras del proveedor
+- `POST /api/v1/proveedores/{id}/compras` - Registrar compra
+- `GET /api/v1/proveedores/{id}/pagos` - Pagos del proveedor
+- `POST /api/v1/proveedores/{id}/pagos` - Registrar pago
 
 ### Ventas
-```http
-GET    /api/v1/ventas                # Listar
-POST   /api/v1/ventas                # Crear
-GET    /api/v1/ventas/{id}           # Ver
-DELETE /api/v1/ventas/{id}           # Eliminar
-GET    /api/v1/ventas/previsualizar-numero  # Próximo número
-GET    /api/v1/ventas/{id}/pagos/resumen    # Resumen de pagos
-GET    /api/v1/ventas/{id}/pagos            # Pagos de la venta
-POST   /api/v1/ventas/{id}/pagos            # Registrar pago
-```
+- `GET /api/v1/ventas` - Listar ventas
+- `POST /api/v1/ventas` - Registrar venta
+- `GET /api/v1/ventas/{id}` - Ver detalle de venta
 
-### Pedidos
-```http
-GET    /api/v1/pedidos               # Listar
-POST   /api/v1/pedidos               # Crear
-GET    /api/v1/pedidos/{id}          # Ver
-PUT    /api/v1/pedidos/{id}          # Actualizar
-DELETE /api/v1/pedidos/{id}          # Eliminar
-GET    /api/v1/pedidos-pendientes    # Solo pendientes
-POST   /api/v1/pedidos/{id}/asociar-venta  # Asociar a venta
-GET    /api/v1/clima                 # Consulta de clima
-```
-
-### Cheques
-```http
-GET    /api/v1/cheques               # Listar todos
-GET    /api/v1/cheques/pendientes    # Pendientes
-GET    /api/v1/cheques/historial     # Procesados
-GET    /api/v1/cheques/{id}          # Ver detalle
-POST   /api/v1/cheques/{id}/cobrar   # Marcar como cobrado
-POST   /api/v1/cheques/{id}/rechazar # Marcar como rechazado
-PATCH  /api/v1/cheques/{id}          # Actualizar datos
-```
-
-### Notificaciones
-```http
-GET    /api/v1/notificaciones/resumen      # Resumen con contadores
-GET    /api/v1/notificaciones              # Listado completo
-POST   /api/v1/notificaciones/limpiar-cache # Limpiar caché
-```
+### Productos
+- `GET /api/v1/productos` - Listar productos
+- `POST /api/v1/productos` - Crear producto
+- `PUT /api/v1/productos/{id}` - Actualizar producto
 
 ### Reportes
-```http
-GET    /api/v1/reportes/ventas              # Reporte de ventas
-GET    /api/v1/reportes/clientes            # Reporte de clientes
-GET    /api/v1/reportes/productos           # Reporte de productos
-GET    /api/v1/reportes/proveedores         # Reporte de proveedores
-GET    /api/v1/reportes/ventas/export.csv   # Exportar ventas CSV
-GET    /api/v1/reportes/ventas/export.xlsx  # Exportar ventas Excel
-GET    /api/v1/reportes/full/single.xlsx    # Reporte completo Excel
-```
+- `GET /api/v1/reportes/clientes` - Ranking de clientes
+- `GET /api/v1/reportes/productos` - Ranking de productos
+- `GET /api/v1/reportes/proveedores` - Ranking de proveedores
+- `GET /api/v1/reportes/ventas` - Reporte de ventas
 
 ### Métodos de Pago
-```http
-GET    /api/v1/metodos-pago          # Catálogo de métodos
-```
+- `GET /api/v1/metodos-pago` - Listar métodos disponibles
 
 ---
 
 ## 🔐 Sistema de Permisos
 
-### Módulos y Permisos
+El sistema utiliza permisos granulares por módulo:
 
-| Módulo | Permisos |
-|--------|----------|
-| Clientes | `clientes.index`, `clientes.store`, `clientes.update`, `clientes.destroy` |
-| Productos | `productos.index`, `productos.store`, `productos.update`, `productos.destroy` |
-| Proveedores | `proveedores.index`, `proveedores.store`, `proveedores.update`, `proveedores.destroy` |
-| Empleados | `empleados.index`, `empleados.store`, `empleados.update`, `empleados.destroy` |
-| Ventas | `ventas.index`, `ventas.store`, `ventas.show` |
-| Pagos | `pagos.index`, `pagos.store` |
-| Cuenta Corriente | `cta_cte.show` |
-| Reportes | `reportes.view`, `reportes.export` |
-| Usuarios (ABM) | `users.manage`, `users.create`, `users.edit`, `users.delete` |
-| Roles | `roles.index`, `roles.store`, `roles.update`, `roles.destroy` |
-| Métodos de Pago | `metodos_pago.index` |
-
-### Asignación de Permisos
-
-El rol **admin** tiene todos los permisos por defecto.
-
-Para asignar permisos manualmente:
-```php
-use App\Models\Usuario;
-use Spatie\Permission\Models\Permission;
-
-$user = Usuario::find(1);
-$user->givePermissionTo('clientes.index');
-$user->syncPermissions(['clientes.index', 'ventas.index']);
-```
-
----
-
-## 🎨 Características del Frontend
-
-### Tecnologías UI
-- **Vuetify 3:** Componentes Material Design
-- **Composition API:** Código más mantenible y reutilizable
-- **File-based Routing:** Rutas automáticas basadas en estructura de carpetas
-- **Auto-imports:** Componentes y composables auto-importados
-- **TypeScript:** Tipado opcional para mayor seguridad
-
-### Servicios de API
-
-Todos los servicios usan `apiFetch` que proporciona:
-- Autenticación JWT automática
-- Manejo centralizado de errores
-- Interceptor para tokens expirados
-- Logging de requests/responses
-
-**Ejemplo de uso:**
-```javascript
-import { apiFetch } from '@/services/api'
-
-// GET request
-const clientes = await apiFetch('/api/v1/clientes')
-
-// POST request
-const nuevoCliente = await apiFetch('/api/v1/clientes', {
-  method: 'POST',
-  body: { nombre: 'Juan Pérez', email: 'juan@example.com' }
-})
-```
-
-### Stores de Pinia
-
-**Auth Store:**
-```javascript
-import { useAuthStore } from '@/stores/auth'
-
-const authStore = useAuthStore()
-authStore.login({ email, password })
-authStore.logout()
-console.log(authStore.isAuthenticated)
-console.log(authStore.user)
-```
-
----
-
-## 📊 Base de Datos
-
-### Tablas Principales
-
-- `usuarios` - Usuarios del sistema
-- `clientes` - Clientes
-- `productos` - Inventario de productos
-- `proveedores` - Proveedores
-- `empleados` - Empleados
-- `ventas` - Cabecera de ventas
-- `venta_detalles` - Detalle de productos por venta
-- `pagos` - Pagos recibidos/realizados
-- `pedidos` - Pedidos de clientes
-- `cuentas_corrientes` - Estado de cuenta de clientes
-- `movimientos_cuenta` - Movimientos de cuenta corriente
-- `roles` - Roles del sistema (Spatie)
-- `permissions` - Permisos (Spatie)
-- `model_has_roles` - Relación usuario-rol
-- `model_has_permissions` - Relación usuario-permiso
-
----
-
-## 🔄 Flujos de Trabajo
-
-### Flujo de Venta
-
-1. Crear nueva venta
-2. Agregar productos con cantidad y precio
-3. Seleccionar cliente
-4. Obtener número de comprobante automático
-5. Registrar métodos de pago:
-   - Efectivo
-   - Transferencia
-   - Cheque (con control de vencimiento)
-   - Cuenta corriente
-6. Confirmar venta
-7. Actualizar stock automáticamente
-8. Generar movimiento en cuenta corriente (si aplica)
-
-### Flujo de Cheque
-
-1. Recibir cheque en pago de venta
-2. Sistema registra cheque como "Pendiente"
-3. Alerta automática 7 días antes del vencimiento
-4. Al vencimiento:
-   - Cobrar cheque → Estado "Cobrado"
-   - Rechazar cheque → Estado "Rechazado"
-5. Historial completo de cheques procesados
-
-### Flujo de Pedido
-
-1. Cliente realiza pedido
-2. Sistema registra como "Pendiente"
-3. Consulta de clima para planificación
-4. Procesamiento → Estado "Procesando"
-5. Asociar pedido a venta automáticamente
-6. Estado final: "Completado" o "Cancelado"
-
----
-
-## 🛡️ Seguridad
-
-### Backend
-- ✅ Autenticación JWT con refresh tokens
-- ✅ Validación de datos con FormRequests
-- ✅ Autorización basada en permisos (Spatie)
-- ✅ Protección CSRF en formularios
-- ✅ Sanitización de inputs
-- ✅ Rate limiting en endpoints críticos
-- ✅ Encriptación de passwords (bcrypt)
-- ✅ Validación de tipos de archivo en uploads
-
-### Frontend
-- ✅ Validación de formularios en tiempo real
-- ✅ Token JWT en localStorage
-- ✅ Headers de autorización automáticos
-- ✅ Redirección automática en sesión expirada
-- ✅ Sanitización de datos antes de renderizar
-- ✅ Protección de rutas por permisos
-
----
-
-## 📝 Buenas Prácticas Implementadas
-
-### Backend
-- Controllers delgados con lógica en Services
-- FormRequests para validación
-- API Resources para formateo de respuestas
-- Relaciones Eloquent optimizadas
-- Eager loading para evitar N+1 queries
-- Transacciones para operaciones críticas
-- Logs estructurados
-
-### Frontend
-- Composition API con setup script
-- Composables reutilizables
-- Servicios centralizados
-- Manejo de estados con Pinia
-- Loading states en acciones asíncronas
-- Error boundaries
-- Componentes atómicos
+- `clientes.*` - CRUD de clientes
+- `proveedores.*` - CRUD de proveedores
+- `proveedores.compras.*` - Gestión de compras
+- `proveedores.pagos.*` - Gestión de pagos
+- `productos.*` - CRUD de productos
+- `ventas.*` - Gestión de ventas
+- `reportes.view` - Ver reportes
+- `reportes.export` - Exportar reportes
+- `usuarios.*` - Gestión de usuarios
+- `roles.*` - Gestión de roles
 
 ---
 
 ## 🧪 Testing
 
-### Backend
 ```bash
+# Backend
+cd api
 php artisan test
-```
 
-### Frontend
-```bash
+# Frontend
+cd admin
 npm run test
 ```
 
 ---
 
-## 📦 Build para Producción
+## 📝 Scripts de Utilidad
 
-### Backend
+En el directorio `api/` se incluyen scripts PHP para tareas administrativas:
+
+- `agregar-permisos-proveedores.php` - Agregar permisos faltantes
+- `listar-usuarios-permisos.php` - Listar usuarios y sus permisos
+- `actualizar-estados-pago.php` - Actualizar estados de pago de ventas
+
+---
+
+## 🚀 Deployment
+
+### Producción
+
+1. **Backend**
 ```bash
-php artisan optimize
+cd api
+composer install --optimize-autoloader --no-dev
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 ```
 
-### Frontend
+2. **Frontend**
 ```bash
+cd admin
 npm run build
 ```
 
-Los archivos compilados estarán en `admin/dist/`
+Los archivos estáticos se generarán en `admin/dist/`
 
----
+### Docker Production
 
-## 🐛 Troubleshooting
-
-### Error: "Token inválido"
-**Solución:**
 ```bash
-# Backend
-php artisan jwt:secret
-php artisan config:clear
-
-# Frontend: Hacer logout y login nuevamente
-```
-
-### Error: "Permission denied"
-**Solución:**
-```bash
-php artisan db:seed --class=RolesAndPermissionsSeeder
-php artisan permission:cache-reset
-```
-
-### Error: "CORS policy"
-**Solución:** Verificar `config/cors.php`:
-```php
-'allowed_origins' => ['http://localhost:5173'],
-```
-
-### Error: "Storage link not found"
-**Solución:**
-```bash
-php artisan storage:link
-```
-
-### Error de Vite: "Failed to resolve import"
-**Solución:**
-```bash
-cd admin
-rm -rf node_modules
-npm install
+docker-compose -f docker-compose.prod.yml up -d
 ```
 
 ---
 
-## 📚 Documentación Adicional
+## 🤝 Contribución
 
-- [Laravel Documentation](https://laravel.com/docs/12.x)
-- [Vue 3 Documentation](https://vuejs.org/)
-- [Vuetify 3 Documentation](https://vuetifyjs.com/)
-- [Spatie Laravel Permission](https://spatie.be/docs/laravel-permission/v6/introduction)
-- [JWT Auth](https://jwt-auth.readthedocs.io/)
+Las contribuciones son bienvenidas. Por favor:
 
----
-
-## 🤝 Contribuciones
-
-Este proyecto es privado para Maderas Pani. Para reportar bugs o solicitar features, contactar al equipo de desarrollo.
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
 
 ---
 
 ## 📄 Licencia
 
-Propietario: Maderas Pani  
-Todos los derechos reservados © 2025
+Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para más detalles.
 
 ---
 
-## 👨‍💻 Desarrollador
+## 👥 Desarrolladores
 
-**Alejandro Pintos**  
-GitHub: [@Alejandro-Pintos](https://github.com/Alejandro-Pintos)
-
----
-
-## 📞 Soporte
-
-Para soporte técnico o consultas, contactar a través del repositorio o email del proyecto.
-
----
-
-## 🎯 Roadmap
-
-### Implementado ✅
-- Sistema de autenticación JWT
-- Gestión completa de clientes
-- Gestión de productos e inventario
-- Gestión de proveedores y pagos
-- Gestión de empleados
-- Sistema de ventas y facturación
-- Gestión de pedidos
-- Sistema de cheques
-- Cuenta corriente
-- Reportes y exportaciones
-- Sistema de notificaciones
-- Perfil de usuario editable
-- ABM de usuarios
-- Dashboard con métricas
-
-### Futuras Mejoras 🚀
-- Notificaciones push en tiempo real
-- App móvil (React Native)
-- Integración con sistemas de facturación electrónica
-- Dashboard de BI con gráficos avanzados
-- Sistema de backup automático
-- Integración con WhatsApp Business
-- Sistema de cotizaciones
-- Gestión de garantías
-- Control de múltiples sucursales
-- API pública con documentación Swagger
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/Alejandro-Pintos">
+        <img src="https://github.com/Alejandro-Pintos.png" width="100px;" alt="Alejandro Pintos"/><br />
+        <sub><b>Alejandro Pintos</b></sub>
+      </a><br />
+      <a href="https://github.com/Alejandro-Pintos" title="GitHub">
+        <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white" />
+      </a><br />
+      <a href="https://www.linkedin.com/in/alejandro-pintos" title="LinkedIn">
+        <img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" />
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/manuel-pereyra">
+        <img src="https://github.com/manuel-pereyra.png" width="100px;" alt="Manuel Pereyra"/><br />
+        <sub><b>Manuel Pereyra</b></sub>
+      </a><br />
+      <a href="https://github.com/manuel-pereyra" title="GitHub">
+        <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white" />
+      </a><br />
+      <a href="https://www.linkedin.com/in/manuel-pereyra" title="LinkedIn">
+        <img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" />
+      </a>
+    </td>
+  </tr>
+</table>
 
 ---
 
-**Versión:** 1.0.0  
-**Última actualización:** 2 de diciembre de 2025
+## 📧 Contacto
+
+Para soporte o consultas, por favor abrir un [issue en GitHub](https://github.com/Alejandro-Pintos/CRM_MP/issues).
+
+---
+
+## 🙏 Agradecimientos
+
+- [Laravel](https://laravel.com) - Framework PHP
+- [Vue.js](https://vuejs.org) - Framework JavaScript
+- [Vuetify](https://vuetifyjs.com) - UI Framework
+- [Spatie Laravel Permission](https://spatie.be/docs/laravel-permission) - Sistema de permisos
+- [Chart.js](https://www.chartjs.org) - Gráficos
+- Comunidad open source
+
+---
+
+<div align="center">
+  
+  **Desarrollado con dedicación por Alejandro Pintos & Manuel Pereyra**
+  
+  © 2025 CRM-MP. Todos los derechos reservados.
+  
+</div>
