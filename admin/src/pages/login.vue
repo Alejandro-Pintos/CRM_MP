@@ -136,10 +136,11 @@ const isPasswordVisible = ref(false)
   flex: 2;
   height: 100vh;
   overflow: hidden;
-  background-image: url('https://raw.githubusercontent.com/Alejandro-Pintos/CRM_MP/main/admin/public/images/login-bg.jpg');
+  background-image: url('/images/login-bg.jpg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  background-color: #2c3e50;
 }
 
 .left-overlay {
