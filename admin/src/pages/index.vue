@@ -90,7 +90,7 @@ const navigateToManual = () => {
           Bienvenido, {{ userName }}
         </h1>
         <p class="text-h6 text-medium-emphasis">
-          Este panel centraliza la gestión de ventas, stock, pagos y reportes de Maderas Pani
+          Este panel centraliza la gestión de ventas, pagos y reportes de Maderas Pani
         </p>
       </VCardText>
     </VCard>

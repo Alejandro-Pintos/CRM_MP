@@ -25,7 +25,7 @@
           <VIcon icon="mdi-github" size="18" />
         </a>
         <a
-          href="https://www.linkedin.com/in/alejandro-pintos"
+          href="https://www.linkedin.com/in/alejandropintos"
           target="_blank"
           rel="noopener noreferrer"
           class="text-primary"
@@ -37,9 +37,9 @@
 
       <!-- Desarrollador 2 -->
       <div class="d-flex align-center gap-x-1">
-        <span>Manuel Pereyra</span>
+        <span>Marcelo Hugo Coronel</span>
         <a
-          href="https://github.com/manuel-pereyra"
+          href="https://github.com/marcelo-coronel"
           target="_blank"
           rel="noopener noreferrer"
           class="text-primary"
@@ -48,7 +48,7 @@
           <VIcon icon="mdi-github" size="18" />
         </a>
         <a
-          href="https://www.linkedin.com/in/manuel-pereyra"
+          href="https://www.linkedin.com/in/marcelo-coronel"
           target="_blank"
           rel="noopener noreferrer"
           class="text-primary"
@@ -72,9 +72,8 @@
         rel="noopener noreferrer"
       >Documentación</a>
       <a
-        href="https://github.com/Alejandro-Pintos/CRM_MP/issues"
-        target="_blank"
-        rel="noopener noreferrer"
+        href="mailto:soporte.crmmp@gmail.com?subject=Soporte CRM-MP&body=Describe tu problema aquí..."
+        class="text-primary"
       >Soporte</a>
     </span>
   </div>

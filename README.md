@@ -424,19 +424,19 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para
       <a href="https://github.com/Alejandro-Pintos" title="GitHub">
         <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white" />
       </a><br />
-      <a href="https://www.linkedin.com/in/alejandro-pintos" title="LinkedIn">
+      <a href="https://www.linkedin.com/in/alejandropintos" title="LinkedIn">
         <img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" />
       </a>
     </td>
     <td align="center">
-      <a href="https://github.com/manuel-pereyra">
-        <img src="https://github.com/manuel-pereyra.png" width="100px;" alt="Manuel Pereyra"/><br />
-        <sub><b>Manuel Pereyra</b></sub>
+      <a href="https://github.com/marcelo-coronel">
+        <img src="https://github.com/marcelo-coronel.png" width="100px;" alt="Marcelo Hugo Coronel"/><br />
+        <sub><b>Marcelo Hugo Coronel</b></sub>
       </a><br />
-      <a href="https://github.com/manuel-pereyra" title="GitHub">
+      <a href="https://github.com/marcelo-coronel" title="GitHub">
         <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white" />
       </a><br />
-      <a href="https://www.linkedin.com/in/manuel-pereyra" title="LinkedIn">
+      <a href="https://www.linkedin.com/in/marcelo-coronel" title="LinkedIn">
         <img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" />
       </a>
     </td>
@@ -447,7 +447,9 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para
 
 ## 📧 Contacto
 
-Para soporte o consultas, por favor abrir un [issue en GitHub](https://github.com/Alejandro-Pintos/CRM_MP/issues).
+Para soporte o consultas:
+- **Email**: [soporte.crmmp@gmail.com](mailto:soporte.crmmp@gmail.com)
+- **GitHub Issues**: [Reportar un problema](https://github.com/Alejandro-Pintos/CRM_MP/issues)
 
 ---
 
@@ -464,7 +466,7 @@ Para soporte o consultas, por favor abrir un [issue en GitHub](https://github.co
 
 <div align="center">
   
-  **Desarrollado con dedicación por Alejandro Pintos & Manuel Pereyra**
+  **Desarrollado con dedicación por Alejandro Pintos & Marcelo Hugo Coronel**
   
   © 2025 CRM-MP. Todos los derechos reservados.
   
