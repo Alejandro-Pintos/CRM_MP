@@ -25,7 +25,7 @@
           <VIcon icon="mdi-github" size="18" />
         </a>
         <a
-          href="https://www.linkedin.com/in/alejandropintos"
+          href="https://www.linkedin.com/in/alejandro-pintos-44b0a62a6/"
           target="_blank"
           rel="noopener noreferrer"
           class="text-primary"
@@ -65,16 +65,27 @@
         href="https://github.com/Alejandro-Pintos/CRM_MP/blob/main/LICENSE"
         target="_blank"
         rel="noopener noreferrer"
-      >Licencia</a>
+        class="d-flex align-center gap-x-1"
+      >
+        <VIcon icon="mdi-license" size="16" />
+        <span>Licencia</span>
+      </a>
       <a
         href="https://github.com/Alejandro-Pintos/CRM_MP/blob/main/README.md"
         target="_blank"
         rel="noopener noreferrer"
-      >Documentación</a>
+        class="d-flex align-center gap-x-1"
+      >
+        <VIcon icon="mdi-file-document" size="16" />
+        <span>Documentación</span>
+      </a>
       <a
         href="mailto:soporte.crmmp@gmail.com?subject=Soporte CRM-MP&body=Describe tu problema aquí..."
-        class="text-primary"
-      >Soporte</a>
+        class="d-flex align-center gap-x-1"
+      >
+        <VIcon icon="mdi-email" size="16" />
+        <span>Soporte</span>
+      </a>
     </span>
   </div>
 </template>
