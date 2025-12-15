@@ -22,7 +22,7 @@
           class="text-primary"
           title="GitHub"
         >
-          <VIcon icon="mdi-github" size="18" />
+          <VIcon icon="ri-github-line" size="18" />
         </a>
         <a
           href="https://www.linkedin.com/in/alejandro-pintos-44b0a62a6/"
@@ -31,7 +31,7 @@
           class="text-primary"
           title="LinkedIn"
         >
-          <VIcon icon="mdi-linkedin" size="18" />
+          <VIcon icon="ri-linkedin-box-line" size="18" />
         </a>
       </div>
 
@@ -45,7 +45,7 @@
           class="text-primary"
           title="GitHub"
         >
-          <VIcon icon="mdi-github" size="18" />
+          <VIcon icon="ri-github-line" size="18" />
         </a>
         <a
           href="https://www.linkedin.com/in/marcelo-coronel"
@@ -54,7 +54,7 @@
           class="text-primary"
           title="LinkedIn"
         >
-          <VIcon icon="mdi-linkedin" size="18" />
+          <VIcon icon="ri-linkedin-box-line" size="18" />
         </a>
       </div>
     </div>

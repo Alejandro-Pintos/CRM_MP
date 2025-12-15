@@ -132,16 +132,20 @@ const isPasswordVisible = ref(false)
 }
 
 .left-half {
-  position: relative; /* Cambiado de absolute a relative */
+  position: relative;
   flex: 2;
-  height: 100vh; /* Asegura altura completa */
-  overflow: hidden; /* Previene scroll */
+  height: 100vh;
+  overflow: hidden;
+  background-image: url('https://raw.githubusercontent.com/Alejandro-Pintos/CRM_MP/main/admin/public/images/login-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .left-overlay {
-  position: relative;
+  position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.5) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
