@@ -157,49 +157,50 @@ const isPasswordVisible = ref(false)
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
-  height: 100%; /* Asegura altura completa */
-  overflow-y: auto; /* Permite scroll si el contenido es muy alto */
+  padding: 3rem 2rem;
+  height: 100%;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+:deep(.v-theme--dark) .right-half {
+  background: rgba(15, 23, 42, 0.7);
 }
 
 .auth-card {
   width: 100%;
-  max-width: 520px;
-  max-height: 90vh;
-  overflow-y: auto;
-  transform: none;
-  transition: box-shadow 0.3s ease;
-  border: 3px solid rgba(var(--v-theme-primary), 0.1);
-  /* Simplificamos las sombras */
+  max-width: 460px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow: 
-    0 4px 12px rgba(69, 132, 248, 0.1),
-    0 0 0 1px rgba(var(--v-theme-primary), 0.05);
-  /* Aseguramos que el texto se vea nítido */
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  backface-visibility: hidden;
+    0 8px 32px rgba(31, 38, 135, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.2);
+  border-radius: 16px !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Efecto hover simplificado */
 .auth-card:hover {
-  /* Solo cambiamos la sombra, sin transformaciones 3D */
+  transform: translateY(-4px);
   box-shadow: 
-    0 8px 24px rgba(0, 0, 0, 0.12),
-    0 0 0 1px rgba(var(--v-theme-primary), 0.08);
+    0 12px 48px rgba(31, 38, 135, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.3);
 }
 
-/* Ajuste para modo oscuro */
 :deep(.v-theme--dark) .auth-card {
-  border-color: rgba(255, 255, 255, 0.05);
+  background: rgba(30, 41, 59, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.15),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 :deep(.v-theme--dark) .auth-card:hover {
+  transform: translateY(-4px);
   box-shadow: 
-    0 8px 24px rgba(0, 0, 0, 0.2),
-    0 0 0 1px rgba(255, 255, 255, 0.08);
+    0 12px 48px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.15);
 }
 
 @media (max-width: 959px) {
@@ -219,16 +220,20 @@ const isPasswordVisible = ref(false)
     position: relative;
     z-index: 1;
     padding: 1rem;
-    height: 100%; /* Ocupa toda la altura para centrar la card */
+    height: 100%;
+    background: transparent;
   }
 
   .auth-card {
     max-height: none;
     margin: 1rem 0;
-    background-color: rgba(var(--v-theme-surface), 0.95) !important;
-    /* Aseguramos que no haya filtros que causen desenfoque en móvil */
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  
+  :deep(.v-theme--dark) .auth-card {
+    background: rgba(30, 41, 59, 0.95) !important;
   }
 }
 </style>
